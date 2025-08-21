@@ -8,7 +8,7 @@ A professional 3D checkers game with AI opponent, move suggestions, and LLM-powe
 
 ## 🎮 Live Demo
 
-Play the game at: [https://[your-username].github.io/checkers/](https://[your-username].github.io/checkers/)
+Play the game at: [https://dorialn68.github.io/checkers/](https://dorialn68.github.io/checkers/)
 
 ## ✨ Features
 
@@ -52,7 +52,7 @@ Play the game at: [https://[your-username].github.io/checkers/](https://[your-us
 ### Run Locally
 1. Clone the repository:
 ```bash
-git clone https://github.com/[your-username]/checkers.git
+git clone https://github.com/dorialn68/checkers.git
 cd checkers
 ```
 
@@ -99,7 +99,7 @@ cd checkers
 1. Fork this repository
 2. Enable GitHub Pages in Settings > Pages
 3. Select source: Deploy from branch (main)
-4. Your game will be live at `https://[username].github.io/checkers/`
+4. Your game will be live at `https://dorialn68.github.io/checkers/`
 
 ### Custom Domain
 1. Add a `CNAME` file with your domain
@@ -150,7 +150,7 @@ Features:
 ✅ Multiple game modes
 ✅ Free to play online
 
-Try it here: [your-game-url]
+Try it here: https://dorialn68.github.io/checkers/
 
 #GameDev #AI #WebDevelopment #Checkers #ThreeJS
 ```
@@ -167,6 +167,6 @@ Created with passion for the classic game of checkers and modern web technologie
 
 ---
 
-**Play Now**: [https://[your-username].github.io/checkers/](https://[your-username].github.io/checkers/)
+**Play Now**: [https://dorialn68.github.io/checkers/](https://dorialn68.github.io/checkers/)
 
 Made with ❤️ using HTML5, Three.js, and AI

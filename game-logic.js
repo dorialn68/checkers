@@ -70,10 +70,26 @@ class CheckersGame {
             // This piece can only move if it has jumps available
             if (jumpMoves.length > 0) {
                 this.validMoves = jumpMoves;
+                // Piece has jumps, allow selection
+                return true;
             } else {
-                // This piece cannot move because other pieces must jump
-                this.validMoves = [];
-                return false;
+                // This piece has no jumps available
+                // Check if this piece is one that MUST jump
+                const pieceHasJump = allJumps.some(jump => 
+                    jump.from.row === row && jump.from.col === col
+                );
+                
+                if (!pieceHasJump) {
+                    // This piece doesn't have any jumps, but other pieces do
+                    // Clear moves but allow selection to show it's blocked
+                    this.validMoves = [];
+                    return true;
+                } else {
+                    // This piece should have jumps but we didn't find them - there's a logic error
+                    console.error('Logic error: Piece should have jumps but none found');
+                    this.validMoves = [];
+                    return true;
+                }
             }
         }
         

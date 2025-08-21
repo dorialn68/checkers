@@ -16,6 +16,18 @@ class Checkers3DRenderer {
         this.animationQueue = [];
         this.hintHighlights = [];
         
+        // Store lights for later adjustment
+        this.ambientLight = null;
+        this.mainLight = null;
+        this.rimLight = null;
+        this.pointLight = null;
+        
+        // Visual settings
+        this.customRedColor = null;
+        this.customBlackColor = null;
+        this.saturationLevel = 1.0;
+        this.shininessLevel = 0.3;
+        
         this.init();
     }
 
@@ -57,41 +69,41 @@ class Checkers3DRenderer {
     }
 
     setupLights() {
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-        this.scene.add(ambientLight);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        this.scene.add(this.ambientLight);
 
-        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        mainLight.position.set(5, 10, 5);
-        mainLight.castShadow = true;
-        mainLight.shadow.camera.near = 0.1;
-        mainLight.shadow.camera.far = 50;
-        mainLight.shadow.camera.left = -10;
-        mainLight.shadow.camera.right = 10;
-        mainLight.shadow.camera.top = 10;
-        mainLight.shadow.camera.bottom = -10;
-        mainLight.shadow.mapSize.width = 2048;
-        mainLight.shadow.mapSize.height = 2048;
-        this.scene.add(mainLight);
+        this.mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        this.mainLight.position.set(5, 10, 5);
+        this.mainLight.castShadow = true;
+        this.mainLight.shadow.camera.near = 0.1;
+        this.mainLight.shadow.camera.far = 50;
+        this.mainLight.shadow.camera.left = -10;
+        this.mainLight.shadow.camera.right = 10;
+        this.mainLight.shadow.camera.top = 10;
+        this.mainLight.shadow.camera.bottom = -10;
+        this.mainLight.shadow.mapSize.width = 2048;
+        this.mainLight.shadow.mapSize.height = 2048;
+        this.scene.add(this.mainLight);
 
-        const rimLight = new THREE.DirectionalLight(0x667eea, 0.3);
-        rimLight.position.set(-5, 5, -5);
-        this.scene.add(rimLight);
+        this.rimLight = new THREE.DirectionalLight(0x667eea, 0.3);
+        this.rimLight.position.set(-5, 5, -5);
+        this.scene.add(this.rimLight);
 
-        const pointLight1 = new THREE.PointLight(0xffd700, 0.5, 20);
-        pointLight1.position.set(0, 5, 0);
-        this.scene.add(pointLight1);
+        this.pointLight = new THREE.PointLight(0xffd700, 0.5, 20);
+        this.pointLight.position.set(0, 5, 0);
+        this.scene.add(this.pointLight);
     }
 
     createBoard() {
         const boardGroup = new THREE.Group();
         
         const boardGeometry = new THREE.BoxGeometry(8.5, 0.3, 8.5);
-        const boardMaterial = new THREE.MeshPhongMaterial({
+        this.boardMaterial = new THREE.MeshPhongMaterial({
             color: 0x8b4513,
             specular: 0x222222,
             shininess: 30
         });
-        const boardBase = new THREE.Mesh(boardGeometry, boardMaterial);
+        const boardBase = new THREE.Mesh(boardGeometry, this.boardMaterial);
         boardBase.position.y = -0.15;
         boardBase.receiveShadow = true;
         boardBase.castShadow = true;
@@ -185,19 +197,44 @@ class Checkers3DRenderer {
         const pieceGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 32);
         const kingGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 32);
         
+        // Get piece colors
+        let redColor, blackColor;
+        
+        if (this.customRedColor && this.customBlackColor) {
+            // Use custom colors
+            redColor = new THREE.Color(this.customRedColor);
+            blackColor = new THREE.Color(this.customBlackColor);
+        } else {
+            // Use default colors
+            redColor = new THREE.Color(0xcc0000);
+            blackColor = new THREE.Color(0x1a1a1a);
+        }
+        
+        // Apply saturation adjustment
+        if (this.saturationLevel !== 1.0) {
+            const hslRed = {};
+            const hslBlack = {};
+            redColor.getHSL(hslRed);
+            blackColor.getHSL(hslBlack);
+            hslRed.s *= this.saturationLevel;
+            hslBlack.s *= this.saturationLevel;
+            redColor.setHSL(hslRed.h, hslRed.s, hslRed.l);
+            blackColor.setHSL(hslBlack.h, hslBlack.s, hslBlack.l);
+        }
+        
         const redMaterial = new THREE.MeshPhongMaterial({
-            color: 0xcc0000,
+            color: redColor,
             specular: 0xffffff,
-            shininess: 100,
-            emissive: 0x440000,
+            shininess: Math.max(10, this.shininessLevel * 100),
+            emissive: redColor.clone().multiplyScalar(0.3),
             emissiveIntensity: 0.2
         });
         
         const blackMaterial = new THREE.MeshPhongMaterial({
-            color: 0x1a1a1a,
+            color: blackColor,
             specular: 0xffffff,
-            shininess: 100,
-            emissive: 0x0a0a0a,
+            shininess: Math.max(10, this.shininessLevel * 100),
+            emissive: blackColor.clone().multiplyScalar(0.3),
             emissiveIntensity: 0.1
         });
 
@@ -247,6 +284,46 @@ class Checkers3DRenderer {
         this.createPieces();
         this.clearValidMoveIndicators();
         this.clearHintHighlights();
+        
+        // Visual feedback for which pieces can move
+        if (this.game.currentPlayer && !this.game.isGameOver) {
+            const jumps = this.game.rules.mandatoryCapture ? 
+                this.game.getAllJumpsForPlayer(this.game.currentPlayer) : [];
+            
+            if (jumps.length > 0) {
+                // Highlight pieces that MUST jump
+                const mustJumpPieces = new Set();
+                jumps.forEach(jump => {
+                    mustJumpPieces.add(`${jump.from.row},${jump.from.col}`);
+                });
+                
+                this.pieces.forEach(piece => {
+                    if (piece.mesh && piece.mesh.material) {
+                        const key = `${piece.row},${piece.col}`;
+                        if (mustJumpPieces.has(key)) {
+                            // Pieces that must jump - bright glow
+                            piece.mesh.material.emissiveIntensity = 0.5;
+                        } else if (this.game.board[piece.row][piece.col]?.color === this.game.currentPlayer) {
+                            // Other pieces of current player - dimmed
+                            piece.mesh.material.emissiveIntensity = 0.05;
+                        }
+                        piece.mesh.material.needsUpdate = true;
+                    }
+                });
+            } else {
+                // No mandatory jumps - show all pieces that can move
+                this.pieces.forEach(piece => {
+                    if (piece.mesh && piece.mesh.material) {
+                        const boardPiece = this.game.board[piece.row][piece.col];
+                        if (boardPiece && boardPiece.color === this.game.currentPlayer) {
+                            const moves = this.game.getValidMoves(piece.row, piece.col);
+                            piece.mesh.material.emissiveIntensity = moves.length > 0 ? 0.25 : 0.05;
+                            piece.mesh.material.needsUpdate = true;
+                        }
+                    }
+                });
+            }
+        }
         
         if (this.game.selectedPiece) {
             this.highlightSelectedPiece(this.game.selectedPiece.row, this.game.selectedPiece.col);
@@ -509,6 +586,69 @@ class Checkers3DRenderer {
             this.controls.autoRotate = false;
         }
     }
+    
+    setCustomColors(redHex, blackHex) {
+        this.customRedColor = redHex;
+        this.customBlackColor = blackHex;
+        // Re-create pieces with new colors
+        this.createPieces();
+    }
+    
+    updateShininess(level) {
+        this.shininessLevel = level;
+        // Update all piece materials
+        this.pieces.forEach(piece => {
+            if (piece.mesh && piece.mesh.material) {
+                piece.mesh.material.shininess = Math.max(10, level * 100);
+                piece.mesh.material.needsUpdate = true;
+            }
+        });
+    }
+    
+    updateSaturation(level) {
+        this.saturationLevel = level;
+        // Recreate pieces with new saturation
+        this.createPieces();
+    }
+    
+    updateBoardReflection(level) {
+        // Update board material shininess
+        if (this.boardMaterial) {
+            this.boardMaterial.shininess = Math.max(5, level * 50);
+            this.boardMaterial.needsUpdate = true;
+        }
+        
+        // Also update square materials
+        if (this.board) {
+            this.board.traverse((child) => {
+                if (child.isMesh && child.material && child.material.shininess !== undefined) {
+                    child.material.shininess = Math.max(5, level * 30);
+                    child.material.needsUpdate = true;
+                }
+            });
+        }
+    }
+    
+    
+    updateBrightness(brightness) {
+        // Update light intensities
+        if (this.ambientLight) {
+            this.ambientLight.intensity = 0.4 * brightness;
+        }
+        if (this.mainLight) {
+            this.mainLight.intensity = 0.8 * brightness;
+        }
+        if (this.rimLight) {
+            this.rimLight.intensity = 0.3 * brightness;
+        }
+        if (this.pointLight) {
+            this.pointLight.intensity = 0.5 * brightness;
+        }
+        
+        // Update tone mapping exposure
+        this.renderer.toneMappingExposure = 1.2 * brightness;
+    }
+    
 
     animate() {
         requestAnimationFrame(this.animate.bind(this));

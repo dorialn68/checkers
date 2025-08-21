@@ -2,11 +2,15 @@ let game = null;
 let renderer = null;
 let ai = null;
 let llm = null;
-let currentMode = 'pvp';
+let currentMode = 'pvc';  // Default to PvC mode
 let aiDifficulty = 'medium';
 let isAIThinking = false;
 let helperMode = false;
 let moveHistoryCount = 0;
+
+// Player side determines which pieces they control (red or black)
+let playerSide = 'red';  // Which side the human plays (red or black)
+let computerSide = 'black';  // Which side the computer plays (opposite of player)
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeGame();
@@ -25,6 +29,11 @@ function initializeGame() {
     renderer.onSquareClick = handleSquareClick;
     
     updateUI();
+    
+    // If in PvC mode and computer plays red (goes first), trigger AI move
+    if (currentMode === 'pvc' && computerSide === 'red') {
+        setTimeout(() => makeAIMove(), 1000);
+    }
 }
 
 function setupEventListeners() {
@@ -57,12 +66,72 @@ function setupEventListeners() {
     document.getElementById('cam-rotate').addEventListener('click', () => {
         renderer.startAutoRotate();
     });
+    
+    // Player side selection
+    document.getElementById('player-side').addEventListener('change', (e) => {
+        playerSide = e.target.value;
+        computerSide = (playerSide === 'red') ? 'black' : 'red';
+        
+        // Restart game to apply new sides
+        if (currentMode === 'pvc') {
+            startNewGame();
+        }
+    });
+    
+    // Custom color toggle
+    document.getElementById('piece-color').addEventListener('change', (e) => {
+        const customColors = document.getElementById('custom-colors');
+        if (e.target.value === 'custom') {
+            customColors.style.display = 'block';
+        } else {
+            customColors.style.display = 'none';
+        }
+        updatePieceColors();
+    });
+    
+    // Custom color pickers
+    document.getElementById('red-piece-color').addEventListener('input', (e) => {
+        updatePieceColors();
+    });
+    
+    document.getElementById('black-piece-color').addEventListener('input', (e) => {
+        updatePieceColors();
+    });
+    
+    // Visual control listeners
+    document.getElementById('shininess-slider').addEventListener('input', (e) => {
+        const value = e.target.value;
+        document.getElementById('shininess-value').textContent = value + '%';
+        if (renderer) renderer.updateShininess(value / 100);
+    });
+    
+    document.getElementById('saturation-slider').addEventListener('input', (e) => {
+        const value = e.target.value;
+        document.getElementById('saturation-value').textContent = value + '%';
+        if (renderer) renderer.updateSaturation(value / 100);
+    });
+    
+    document.getElementById('brightness-slider').addEventListener('input', (e) => {
+        const value = e.target.value;
+        document.getElementById('brightness-value').textContent = value + '%';
+        if (renderer) renderer.updateBrightness(value / 100);
+    });
+    
+    document.getElementById('board-reflection-slider').addEventListener('input', (e) => {
+        const value = e.target.value;
+        document.getElementById('board-reflection-value').textContent = value + '%';
+        if (renderer) renderer.updateBoardReflection(value / 100);
+    });
 
     document.getElementById('new-game').addEventListener('click', startNewGame);
     document.getElementById('undo-move').addEventListener('click', undoMove);
     document.getElementById('show-hint').addEventListener('click', showHint);
     document.getElementById('show-rules').addEventListener('click', showRules);
     document.getElementById('online-play').addEventListener('click', showOnlinePlayModal);
+    
+    // Debug tools
+    document.getElementById('capture-screenshot').addEventListener('click', captureScreenshot);
+    document.getElementById('copy-board-state').addEventListener('click', copyBoardState);
 
     // Rule toggles
     document.getElementById('backward-capture').addEventListener('change', (e) => {
@@ -167,8 +236,13 @@ function changeAIDifficulty(level) {
 function handleSquareClick(row, col) {
     if (game.isGameOver) return;
     
-    // Allow clicking only for moves, not during AI thinking
-    if (isAIThinking && currentMode === 'pvc' && game.currentPlayer === 'black') {
+    // Prevent clicking during AI's turn
+    if (currentMode === 'pvc' && game.currentPlayer === computerSide) {
+        return; // It's the computer's turn, don't allow clicks
+    }
+    
+    // Also prevent if AI is thinking
+    if (isAIThinking) {
         return;
     }
 
@@ -207,10 +281,23 @@ function makeMove(row, col) {
             if (!game.multiJumpMode) {
                 if (game.isGameOver) {
                     showGameOver();
-                } else if (currentMode === 'pvc' && game.currentPlayer === 'black') {
+                } else if (currentMode === 'pvc' && game.currentPlayer === computerSide) {
                     setTimeout(() => makeAIMove(), 1000);
                 } else if (helperMode) {
                     showAgentSuggestions();
+                }
+            } else {
+                // Check if it's still AI's turn during multi-jump
+                if (currentMode === 'pvc' && game.currentPlayer === computerSide) {
+                    setTimeout(() => {
+                        // Continue AI's multi-jump
+                        const validMoves = game.validMoves;
+                        if (validMoves && validMoves.length > 0) {
+                            // AI continues jump sequence
+                            const nextJump = validMoves[0]; // Pick first available jump
+                            makeMove(nextJump.row, nextJump.col);
+                        }
+                    }, 500);
                 }
             }
         }
@@ -218,14 +305,14 @@ function makeMove(row, col) {
 }
 
 async function makeAIMove() {
-    if (game.isGameOver || game.currentPlayer !== 'black') return;
+    if (game.isGameOver || game.currentPlayer !== computerSide) return;
     
     isAIThinking = true;
     showMoveIndicator('AI is thinking...');
     
     try {
         // Add timeout to prevent infinite thinking
-        const movePromise = ai.getBestMove(game, 'black');
+        const movePromise = ai.getBestMove(game, computerSide);
         const timeoutPromise = new Promise((resolve) => 
             setTimeout(() => resolve(null), 5000) // 5 second max timeout
         );
@@ -318,6 +405,11 @@ function startNewGame() {
     
     if (helperMode) {
         showAgentSuggestions();
+    }
+    
+    // If computer plays red (goes first) in PvC mode, make AI move
+    if (currentMode === 'pvc' && computerSide === 'red') {
+        setTimeout(() => makeAIMove(), 1000);
     }
 }
 
@@ -421,6 +513,102 @@ function updateRulesDisplay() {
     if (game.rules.mandatoryCapture) rulesText.push('Mandatory Capture');
     
     console.log('Active rules:', rulesText.join(', '));
+}
+
+function updatePieceColors() {
+    if (renderer) {
+        const colorMode = document.getElementById('piece-color').value;
+        if (colorMode === 'custom') {
+            const redColor = document.getElementById('red-piece-color').value;
+            const blackColor = document.getElementById('black-piece-color').value;
+            renderer.setCustomColors(redColor, blackColor);
+        } else {
+            renderer.setCustomColors(null, null); // Use default colors
+        }
+        renderer.updateBoard();
+    }
+}
+
+function captureScreenshot() {
+    // Use html2canvas or native canvas capture
+    const canvas = document.getElementById('game-canvas');
+    canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        a.download = `checkers-bug-${timestamp}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        // Show confirmation
+        const debugInfo = document.getElementById('debug-info');
+        debugInfo.textContent = 'Screenshot saved! Check your Downloads folder.';
+        debugInfo.style.display = 'block';
+        setTimeout(() => {
+            debugInfo.style.display = 'none';
+        }, 3000);
+    });
+}
+
+function copyBoardState() {
+    // Create a text representation of the board state
+    const boardState = {
+        currentPlayer: game.currentPlayer,
+        board: [],
+        moveHistory: game.moveHistory,
+        rules: game.rules,
+        mandatoryJumps: game.mandatoryJumps
+    };
+    
+    // Convert board to readable format
+    for (let row = 0; row < 8; row++) {
+        const rowData = [];
+        for (let col = 0; col < 8; col++) {
+            const piece = game.board[row][col];
+            if (piece) {
+                rowData.push(`${piece.color[0].toUpperCase()}${piece.isKing ? 'K' : ''}`);
+            } else {
+                rowData.push((row + col) % 2 === 1 ? '.' : ' ');
+            }
+        }
+        boardState.board.push(rowData.join(' '));
+    }
+    
+    const stateText = `
+=== CHECKERS DEBUG STATE ===
+Turn: ${boardState.currentPlayer}
+Mandatory Jumps: ${boardState.mandatoryJumps.length}
+
+Board (A-H, 1-8):
+  A B C D E F G H
+8 ${boardState.board[0]}
+7 ${boardState.board[1]}
+6 ${boardState.board[2]}
+5 ${boardState.board[3]}
+4 ${boardState.board[4]}
+3 ${boardState.board[5]}
+2 ${boardState.board[6]}
+1 ${boardState.board[7]}
+
+Rules:
+- Backward Capture: ${boardState.rules.backwardCapture}
+- Flying Kings: ${boardState.rules.flyingKings}
+- Mandatory Capture: ${boardState.rules.mandatoryCapture}
+
+Last Moves: ${boardState.moveHistory.slice(-5).map(m => `${m.player}: ${String.fromCharCode(65 + m.from.col)}${8 - m.from.row} to ${String.fromCharCode(65 + m.to.col)}${8 - m.to.row}`).join(', ')}
+===========================
+    `;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(stateText).then(() => {
+        const debugInfo = document.getElementById('debug-info');
+        debugInfo.textContent = 'Board state copied to clipboard!';
+        debugInfo.style.display = 'block';
+        setTimeout(() => {
+            debugInfo.style.display = 'none';
+        }, 3000);
+    });
 }
 
 function showOnlinePlayModal() {

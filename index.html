@@ -39,13 +39,13 @@
                 <div class="panel">
                     <h3>Game Mode</h3>
                     <div class="mode-buttons">
-                        <button class="mode-btn active" data-mode="pvp">
-                            <span class="mode-icon">👥</span>
-                            Person vs Person
-                        </button>
-                        <button class="mode-btn" data-mode="pvc">
+                        <button class="mode-btn active" data-mode="pvc">
                             <span class="mode-icon">🤖</span>
                             Person vs Computer
+                        </button>
+                        <button class="mode-btn" data-mode="pvp">
+                            <span class="mode-icon">👥</span>
+                            Person vs Person
                         </button>
                         <button class="mode-btn" data-mode="helper">
                             <span class="mode-icon">💡</span>
@@ -65,12 +65,55 @@
                 </div>
 
                 <div class="panel">
+                    <h3>Player Settings</h3>
+                    <div class="color-selector">
+                        <label>Play As:</label>
+                        <select id="player-side" class="color-select">
+                            <option value="red" selected>Red (Goes First)</option>
+                            <option value="black">Black (Goes Second)</option>
+                        </select>
+                        <label style="margin-top: 10px;">Piece Color:</label>
+                        <select id="piece-color" class="color-select">
+                            <option value="default" selected>Default Colors</option>
+                            <option value="custom">Custom Colors</option>
+                        </select>
+                        <div id="custom-colors" style="display: none; margin-top: 10px;">
+                            <label>Red Pieces:</label>
+                            <input type="color" id="red-piece-color" value="#cc0000">
+                            <label style="margin-top: 5px;">Black Pieces:</label>
+                            <input type="color" id="black-piece-color" value="#1a1a1a">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
                     <h3>Camera Controls</h3>
                     <div class="camera-controls">
                         <button id="cam-top" class="cam-btn">Top View</button>
                         <button id="cam-side" class="cam-btn">Side View</button>
                         <button id="cam-perspective" class="cam-btn">3D View</button>
                         <button id="cam-rotate" class="cam-btn">Auto Rotate</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Visual Settings</h3>
+                    <div class="lighting-controls">
+                        <label>Piece Shininess:</label>
+                        <input type="range" id="shininess-slider" min="0" max="100" value="30" class="slider">
+                        <span id="shininess-value">30%</span>
+                        
+                        <label style="margin-top: 10px;">Color Saturation:</label>
+                        <input type="range" id="saturation-slider" min="50" max="150" value="100" class="slider">
+                        <span id="saturation-value">100%</span>
+                        
+                        <label style="margin-top: 10px;">Light Brightness:</label>
+                        <input type="range" id="brightness-slider" min="30" max="150" value="100" class="slider">
+                        <span id="brightness-value">100%</span>
+                        
+                        <label style="margin-top: 10px;">Board Reflection:</label>
+                        <input type="range" id="board-reflection-slider" min="0" max="100" value="20" class="slider">
+                        <span id="board-reflection-value">20%</span>
                     </div>
                 </div>
 
@@ -103,6 +146,15 @@
                         <button id="show-hint" class="control-btn hint-btn">Show Hint</button>
                         <button id="show-rules" class="control-btn">Rules</button>
                         <button id="online-play" class="control-btn online-btn">Play Online</button>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h3>Debug Tools</h3>
+                    <div class="debug-controls">
+                        <button id="capture-screenshot" class="control-btn">📷 Capture Bug</button>
+                        <button id="copy-board-state" class="control-btn">📋 Copy Board</button>
+                        <div id="debug-info" style="display: none; margin-top: 10px; font-size: 12px; color: #4CAF50;"></div>
                     </div>
                 </div>
             </div>

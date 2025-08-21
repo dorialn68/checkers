@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Checkers Game Logic Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #222;
+            color: #fff;
+            padding: 20px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #444;
+        }
+        .pass { background: #2a4d2a; }
+        .fail { background: #4d2a2a; }
+        .board-display {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            background: #333;
+            border: 2px solid #666;
+        }
+        .row {
+            display: flex;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .black-square { background: #654321; }
+        .white-square { background: #f0d9b5; }
+    </style>
+</head>
+<body>
+    <h1>Checkers Game Logic Test Suite</h1>
+    <div id="test-output"></div>
+    
+    <script src="game-logic.js"></script>
+    <script>
+        const output = document.getElementById('test-output');
+        let testCount = 0;
+        let passCount = 0;
+        
+        function log(message, isPass = null) {
+            const div = document.createElement('div');
+            div.className = 'test-result';
+            if (isPass !== null) {
+                div.className += isPass ? ' pass' : ' fail';
+                testCount++;
+                if (isPass) passCount++;
+                message = `[${isPass ? 'PASS' : 'FAIL'}] ${message}`;
+            }
+            div.textContent = message;
+            output.appendChild(div);
+        }
+        
+        function displayBoard(game, title) {
+            const div = document.createElement('div');
+            div.className = 'board-display';
+            div.innerHTML = `<h3>${title}</h3>`;
+            
+            const boardDiv = document.createElement('div');
+            boardDiv.innerHTML = '<div style="margin-left: 30px;">A B C D E F G H</div>';
+            
+            for (let row = 0; row < 8; row++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'row';
+                rowDiv.innerHTML = `<div style="width: 30px;">${8-row}</div>`;
+                
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.className += (row + col) % 2 === 0 ? ' white-square' : ' black-square';
+                    
+                    const piece = game.board[row][col];
+                    if (piece) {
+                        const symbol = piece.color === 'red' ? 'R' : 'B';
+                        const king = piece.isKing ? 'K' : '';
+                        cell.textContent = symbol + king;
+                        cell.style.color = piece.color === 'red' ? '#ff6666' : '#6666ff';
+                    }
+                    rowDiv.appendChild(cell);
+                }
+                boardDiv.appendChild(rowDiv);
+            }
+            div.appendChild(boardDiv);
+            output.appendChild(div);
+        }
+        
+        function runTests() {
+            log('=== Starting Game Logic Tests ===');
+            
+            // Test 1: Initial board setup
+            log('Test 1: Initial Board Setup');
+            const game = new CheckersGame();
+            
+            // Count pieces
+            let redCount = 0, blackCount = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = game.board[row][col];
+                    if (piece) {
+                        if (piece.color === 'red') redCount++;
+                        else if (piece.color === 'black') blackCount++;
+                    }
+                }
+            }
+            log(`Initial piece count - Red: ${redCount}, Black: ${blackCount}`, redCount === 12 && blackCount === 12);
+            displayBoard(game, 'Initial Board');
+            
+            // Test 2: Valid moves for red pieces at start
+            log('\nTest 2: Valid Moves for Red Pieces');
+            let totalRedMoves = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = game.board[row][col];
+                    if (piece && piece.color === 'red') {
+                        const moves = game.getValidMoves(row, col);
+                        if (moves.length > 0) {
+                            log(`  Piece at ${String.fromCharCode(65+col)}${8-row} has ${moves.length} moves`);
+                            totalRedMoves += moves.length;
+                        }
+                    }
+                }
+            }
+            log(`Total red moves available: ${totalRedMoves}`, totalRedMoves > 0);
+            
+            // Test 3: Select and move a piece
+            log('\nTest 3: Select and Move Piece');
+            
+            // Try to select piece at row 5, col 0 (A3 in notation)
+            const canSelect = game.selectPiece(5, 0);
+            log(`Can select red piece at A3: ${canSelect}`, canSelect);
+            
+            if (canSelect) {
+                const validMoves = game.validMoves;
+                log(`Valid moves from A3: ${validMoves.length}`, validMoves.length > 0);
+                
+                if (validMoves.length > 0) {
+                    const move = validMoves[0];
+                    const moveSuccess = game.makeMove(move.row, move.col);
+                    log(`Move to ${String.fromCharCode(65+move.col)}${8-move.row}: ${moveSuccess}`, moveSuccess);
+                    displayBoard(game, 'After First Move');
+                }
+            }
+            
+            // Test 4: Black's turn
+            log('\nTest 4: Black\'s Turn');
+            log(`Current player: ${game.currentPlayer}`, game.currentPlayer === 'black');
+            
+            let blackMoveOptions = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = game.board[row][col];
+                    if (piece && piece.color === 'black') {
+                        const moves = game.getValidMoves(row, col);
+                        if (moves.length > 0) {
+                            blackMoveOptions.push({row, col, moves});
+                        }
+                    }
+                }
+            }
+            log(`Black pieces with moves: ${blackMoveOptions.length}`, blackMoveOptions.length > 0);
+            
+            // Test 5: Jump scenario
+            log('\nTest 5: Creating Jump Scenario');
+            
+            // Create a custom board with jump opportunity
+            const jumpGame = new CheckersGame();
+            jumpGame.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            // Place pieces for jump test
+            jumpGame.board[4][3] = { color: 'red', isKing: false, row: 4, col: 3 };
+            jumpGame.board[3][4] = { color: 'black', isKing: false, row: 3, col: 4 };
+            jumpGame.board[5][2] = { color: 'red', isKing: false, row: 5, col: 2 };
+            
+            displayBoard(jumpGame, 'Jump Test Setup');
+            
+            // Check for jumps
+            const jumps = jumpGame.getAllJumpsForPlayer('red');
+            log(`Red jumps available: ${jumps.length}`, jumps.length > 0);
+            
+            if (jumps.length > 0) {
+                log(`Jump from ${String.fromCharCode(65+jumps[0].from.col)}${8-jumps[0].from.row} to ${String.fromCharCode(65+jumps[0].to.col)}${8-jumps[0].to.row}`);
+            }
+            
+            // Test 6: Multiple pieces can move
+            log('\nTest 6: Multiple Pieces Movement Test');
+            const multiGame = new CheckersGame();
+            
+            // Check that multiple red pieces can be selected
+            const selectableRedPieces = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = multiGame.board[row][col];
+                    if (piece && piece.color === 'red') {
+                        multiGame.selectedPiece = null;
+                        multiGame.validMoves = [];
+                        const canSelect = multiGame.selectPiece(row, col);
+                        if (canSelect && multiGame.validMoves.length > 0) {
+                            selectableRedPieces.push({row, col, moves: multiGame.validMoves.length});
+                        }
+                    }
+                }
+            }
+            
+            log(`Red pieces that can be selected and moved: ${selectableRedPieces.length}`, selectableRedPieces.length > 1);
+            selectableRedPieces.forEach(p => {
+                log(`  - ${String.fromCharCode(65+p.col)}${8-p.row}: ${p.moves} moves available`);
+            });
+            
+            // Test 7: Mandatory jump blocking
+            log('\nTest 7: Mandatory Jump Blocking Test');
+            const mandatoryGame = new CheckersGame();
+            mandatoryGame.rules.mandatoryCapture = true;
+            mandatoryGame.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            // Setup: Red piece that can jump
+            mandatoryGame.board[4][1] = { color: 'red', isKing: false, row: 4, col: 1 };
+            mandatoryGame.board[3][2] = { color: 'black', isKing: false, row: 3, col: 2 };
+            // Another red piece that cannot jump
+            mandatoryGame.board[5][4] = { color: 'red', isKing: false, row: 5, col: 4 };
+            
+            displayBoard(mandatoryGame, 'Mandatory Jump Test');
+            
+            const mandatoryJumps = mandatoryGame.getAllJumpsForPlayer('red');
+            log(`Jumps available for red: ${mandatoryJumps.length}`, mandatoryJumps.length === 1);
+            
+            // Try to select non-jumping piece
+            const canSelectNonJumper = mandatoryGame.selectPiece(5, 4);
+            log(`Can select non-jumping piece when jump is mandatory: ${canSelectNonJumper}`, canSelectNonJumper === true);
+            log(`Valid moves for non-jumper: ${mandatoryGame.validMoves.length}`, mandatoryGame.validMoves.length === 0);
+            
+            // Try to select jumping piece
+            mandatoryGame.selectedPiece = null;
+            const canSelectJumper = mandatoryGame.selectPiece(4, 1);
+            log(`Can select jumping piece: ${canSelectJumper}`, canSelectJumper === true);
+            log(`Valid moves for jumper: ${mandatoryGame.validMoves.length}`, mandatoryGame.validMoves.length > 0);
+            
+            // Summary
+            log('\n=== Test Summary ===');
+            log(`Tests Passed: ${passCount}/${testCount}`);
+            
+            if (passCount < testCount) {
+                log('\n⚠️ ISSUES FOUND - Some tests failed!', false);
+            } else {
+                log('\n✅ All tests passed!', true);
+            }
+        }
+        
+        // Run tests
+        runTests();
+    </script>
+</body>
+</html>

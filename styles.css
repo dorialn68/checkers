@@ -243,6 +243,91 @@ body {
     gap: 12px;
 }
 
+.color-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.color-select:hover {
+    border-color: #4CAF50;
+}
+
+.lighting-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lighting-controls label {
+    font-size: 13px;
+    color: #666;
+    margin-top: 5px;
+}
+
+.slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+.lighting-controls span {
+    font-size: 12px;
+    color: #4CAF50;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+input[type="color"] {
+    width: 50px;
+    height: 30px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+input[type="color"]:hover {
+    border-color: #4CAF50;
+}
+
+#custom-colors label {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #666;
+}
+
 .rule-toggle {
     display: flex;
     flex-direction: column;

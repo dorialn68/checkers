@@ -1,0 +1,22 @@
+{
+  "name": "3D Checkers Pro",
+  "description": "Professional 3D Checkers game with AI opponent and LLM integration",
+  "repository": "https://github.com/dorialn68/checkers",
+  "logo": "https://raw.githubusercontent.com/dorialn68/checkers/main/logo.png",
+  "keywords": ["game", "checkers", "3d", "ai", "multiplayer"],
+  "addons": [],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    },
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-static"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    }
+  }
+}

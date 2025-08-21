@@ -1,0 +1,534 @@
+class Checkers3DRenderer {
+    constructor(canvas, game) {
+        this.canvas = canvas;
+        this.game = game;
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.controls = null;
+        this.pieces = [];
+        this.board = null;
+        this.validMoveIndicators = [];
+        this.selectedPieceGlow = null;
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.isRotating = false;
+        this.animationQueue = [];
+        this.hintHighlights = [];
+        
+        this.init();
+    }
+
+    init() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x1a1a2e);
+        this.scene.fog = new THREE.Fog(0x1a1a2e, 10, 100);
+
+        const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+        this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        this.camera.position.set(0, 12, 12);
+        this.camera.lookAt(0, 0, 0);
+
+        this.renderer = new THREE.WebGLRenderer({ 
+            canvas: this.canvas, 
+            antialias: true,
+            alpha: true 
+        });
+        this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.2;
+
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.maxPolarAngle = Math.PI / 2.2;
+        this.controls.minDistance = 8;
+        this.controls.maxDistance = 25;
+        this.controls.enablePan = false;
+
+        this.setupLights();
+        this.createBoard();
+        this.createPieces();
+        this.setupEventListeners();
+        
+        this.animate();
+    }
+
+    setupLights() {
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        this.scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        mainLight.position.set(5, 10, 5);
+        mainLight.castShadow = true;
+        mainLight.shadow.camera.near = 0.1;
+        mainLight.shadow.camera.far = 50;
+        mainLight.shadow.camera.left = -10;
+        mainLight.shadow.camera.right = 10;
+        mainLight.shadow.camera.top = 10;
+        mainLight.shadow.camera.bottom = -10;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        this.scene.add(mainLight);
+
+        const rimLight = new THREE.DirectionalLight(0x667eea, 0.3);
+        rimLight.position.set(-5, 5, -5);
+        this.scene.add(rimLight);
+
+        const pointLight1 = new THREE.PointLight(0xffd700, 0.5, 20);
+        pointLight1.position.set(0, 5, 0);
+        this.scene.add(pointLight1);
+    }
+
+    createBoard() {
+        const boardGroup = new THREE.Group();
+        
+        const boardGeometry = new THREE.BoxGeometry(8.5, 0.3, 8.5);
+        const boardMaterial = new THREE.MeshPhongMaterial({
+            color: 0x8b4513,
+            specular: 0x222222,
+            shininess: 30
+        });
+        const boardBase = new THREE.Mesh(boardGeometry, boardMaterial);
+        boardBase.position.y = -0.15;
+        boardBase.receiveShadow = true;
+        boardBase.castShadow = true;
+        boardGroup.add(boardBase);
+
+        const edgeGeometry = new THREE.BoxGeometry(0.2, 0.5, 8.5);
+        const edgeMaterial = new THREE.MeshPhongMaterial({
+            color: 0x654321,
+            specular: 0x111111,
+            shininess: 20
+        });
+        
+        for (let i = 0; i < 4; i++) {
+            const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+            if (i < 2) {
+                edge.position.x = i === 0 ? -4.35 : 4.35;
+                edge.rotation.y = 0;
+            } else {
+                edge.position.z = i === 2 ? -4.35 : 4.35;
+                edge.rotation.y = Math.PI / 2;
+            }
+            edge.castShadow = true;
+            boardGroup.add(edge);
+        }
+
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const isBlack = (row + col) % 2 === 1;
+                const squareGeometry = new THREE.PlaneGeometry(1, 1);
+                const squareMaterial = new THREE.MeshPhongMaterial({
+                    color: isBlack ? 0x2c1810 : 0xf0d9b5,
+                    specular: isBlack ? 0x000000 : 0x444444,
+                    shininess: isBlack ? 10 : 30,
+                    side: THREE.DoubleSide
+                });
+                
+                const square = new THREE.Mesh(squareGeometry, squareMaterial);
+                square.rotation.x = -Math.PI / 2;
+                square.position.set(col - 3.5, 0.01, row - 3.5);
+                square.receiveShadow = true;
+                square.userData = { row, col, isSquare: true };
+                boardGroup.add(square);
+
+                // Add coordinate labels for all squares (not just black)
+                const labelCanvas = document.createElement('canvas');
+                labelCanvas.width = 64;
+                labelCanvas.height = 64;
+                const ctx = labelCanvas.getContext('2d');
+                ctx.fillStyle = isBlack ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Show column letters on bottom row
+                if (row === 7) {
+                    ctx.fillText(String.fromCharCode(65 + col), 32, 50);
+                }
+                // Show row numbers on left column
+                if (col === 0) {
+                    ctx.fillText(8 - row, 12, 32);
+                }
+                
+                // Add small coordinate in corner of each black square
+                if (isBlack) {
+                    ctx.font = '12px Arial';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    const coord = String.fromCharCode(65 + col) + (8 - row);
+                    ctx.fillText(coord, 50, 12);
+                }
+                
+                const labelTexture = new THREE.CanvasTexture(labelCanvas);
+                const labelMaterial = new THREE.MeshBasicMaterial({
+                    map: labelTexture,
+                    transparent: true,
+                    opacity: isBlack ? 0.7 : 0.5
+                });
+                const labelMesh = new THREE.Mesh(squareGeometry, labelMaterial);
+                labelMesh.rotation.x = -Math.PI / 2;
+                labelMesh.position.set(col - 3.5, 0.02, row - 3.5);
+                boardGroup.add(labelMesh);
+            }
+        }
+
+        this.board = boardGroup;
+        this.scene.add(boardGroup);
+    }
+
+    createPieces() {
+        this.clearPieces();
+
+        const pieceGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 32);
+        const kingGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 32);
+        
+        const redMaterial = new THREE.MeshPhongMaterial({
+            color: 0xcc0000,
+            specular: 0xffffff,
+            shininess: 100,
+            emissive: 0x440000,
+            emissiveIntensity: 0.2
+        });
+        
+        const blackMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1a1a1a,
+            specular: 0xffffff,
+            shininess: 100,
+            emissive: 0x0a0a0a,
+            emissiveIntensity: 0.1
+        });
+
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const piece = this.game.board[row][col];
+                if (piece) {
+                    const geometry = piece.isKing ? kingGeometry : pieceGeometry;
+                    const material = piece.color === 'red' ? redMaterial.clone() : blackMaterial.clone();
+                    const mesh = new THREE.Mesh(geometry, material);
+                    
+                    mesh.position.set(col - 3.5, piece.isKing ? 0.2 : 0.15, row - 3.5);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.userData = { row, col, piece: true, color: piece.color };
+
+                    if (piece.isKing) {
+                        const crownGeometry = new THREE.ConeGeometry(0.15, 0.2, 6);
+                        const crownMaterial = new THREE.MeshPhongMaterial({
+                            color: 0xffd700,
+                            specular: 0xffffff,
+                            shininess: 200,
+                            emissive: 0xffaa00,
+                            emissiveIntensity: 0.3
+                        });
+                        const crown = new THREE.Mesh(crownGeometry, crownMaterial);
+                        crown.position.y = 0.2;
+                        crown.rotation.y = Math.PI / 6;
+                        mesh.add(crown);
+                    }
+
+                    this.pieces.push(mesh);
+                    this.scene.add(mesh);
+                }
+            }
+        }
+    }
+
+    clearPieces() {
+        this.pieces.forEach(piece => {
+            this.scene.remove(piece);
+        });
+        this.pieces = [];
+    }
+
+    updateBoard() {
+        this.createPieces();
+        this.clearValidMoveIndicators();
+        this.clearHintHighlights();
+        
+        if (this.game.selectedPiece) {
+            this.highlightSelectedPiece(this.game.selectedPiece.row, this.game.selectedPiece.col);
+            this.showValidMoves(this.game.validMoves);
+        }
+    }
+
+    highlightSelectedPiece(row, col) {
+        const piece = this.pieces.find(p => 
+            p.userData.row === row && p.userData.col === col
+        );
+        
+        if (piece) {
+            const glowGeometry = new THREE.RingGeometry(0.4, 0.5, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.rotation.x = -Math.PI / 2;
+            glow.position.set(col - 3.5, 0.02, row - 3.5);
+            this.selectedPieceGlow = glow;
+            this.scene.add(glow);
+
+            piece.position.y += 0.3;
+        }
+    }
+
+    showValidMoves(moves) {
+        this.clearValidMoveIndicators();
+        
+        moves.forEach(move => {
+            const indicatorGeometry = new THREE.RingGeometry(0.35, 0.45, 32);
+            const indicatorMaterial = new THREE.MeshBasicMaterial({
+                color: move.isJump ? 0xff0000 : 0x00ff00,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide
+            });
+            const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+            indicator.rotation.x = -Math.PI / 2;
+            indicator.position.set(move.col - 3.5, 0.03, move.row - 3.5);
+            
+            this.validMoveIndicators.push(indicator);
+            this.scene.add(indicator);
+        });
+    }
+
+    clearValidMoveIndicators() {
+        this.validMoveIndicators.forEach(indicator => {
+            this.scene.remove(indicator);
+        });
+        this.validMoveIndicators = [];
+        
+        if (this.selectedPieceGlow) {
+            this.scene.remove(this.selectedPieceGlow);
+            this.selectedPieceGlow = null;
+        }
+    }
+
+    showHintMoves(moves) {
+        this.clearHintHighlights();
+        
+        moves.forEach((move, index) => {
+            const fromGeometry = new THREE.RingGeometry(0.3, 0.4, 32);
+            const toGeometry = new THREE.RingGeometry(0.35, 0.5, 32);
+            const material = new THREE.MeshBasicMaterial({
+                color: index === 0 ? 0xffd700 : 0xc0c0c0,
+                transparent: true,
+                opacity: 0.8 - (index * 0.2),
+                side: THREE.DoubleSide
+            });
+            
+            const fromIndicator = new THREE.Mesh(fromGeometry, material);
+            fromIndicator.rotation.x = -Math.PI / 2;
+            fromIndicator.position.set(move.from.col - 3.5, 0.04, move.from.row - 3.5);
+            
+            const toIndicator = new THREE.Mesh(toGeometry, material.clone());
+            toIndicator.rotation.x = -Math.PI / 2;
+            toIndicator.position.set(move.to.col - 3.5, 0.04, move.to.row - 3.5);
+            
+            const arrowGeometry = new THREE.ConeGeometry(0.15, 0.3, 4);
+            const arrow = new THREE.Mesh(arrowGeometry, material.clone());
+            const midX = (move.from.col + move.to.col) / 2 - 3.5;
+            const midZ = (move.from.row + move.to.row) / 2 - 3.5;
+            arrow.position.set(midX, 0.3, midZ);
+            
+            const angle = Math.atan2(
+                move.to.row - move.from.row,
+                move.to.col - move.from.col
+            );
+            arrow.rotation.z = -Math.PI / 2;
+            arrow.rotation.x = -angle + Math.PI / 2;
+            
+            this.hintHighlights.push(fromIndicator, toIndicator, arrow);
+            this.scene.add(fromIndicator);
+            this.scene.add(toIndicator);
+            this.scene.add(arrow);
+        });
+    }
+
+    clearHintHighlights() {
+        this.hintHighlights.forEach(highlight => {
+            this.scene.remove(highlight);
+        });
+        this.hintHighlights = [];
+    }
+
+    animateMove(from, to, callback) {
+        const piece = this.pieces.find(p => 
+            p.userData.row === from.row && p.userData.col === from.col
+        );
+        
+        if (!piece) {
+            if (callback) callback();
+            return;
+        }
+
+        const startPos = new THREE.Vector3(from.col - 3.5, piece.position.y, from.row - 3.5);
+        const endPos = new THREE.Vector3(to.col - 3.5, piece.position.y, to.row - 3.5);
+        const midPos = startPos.clone().lerp(endPos, 0.5);
+        midPos.y += 1;
+
+        const duration = 500;
+        const startTime = Date.now();
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            const easeProgress = this.easeInOutQuad(progress);
+            
+            if (progress < 0.5) {
+                const subProgress = easeProgress * 2;
+                piece.position.lerpVectors(startPos, midPos, subProgress);
+            } else {
+                const subProgress = (easeProgress - 0.5) * 2;
+                piece.position.lerpVectors(midPos, endPos, subProgress);
+            }
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                piece.userData.row = to.row;
+                piece.userData.col = to.col;
+                if (callback) callback();
+            }
+        };
+
+        animate();
+    }
+
+    easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    setupEventListeners() {
+        this.canvas.addEventListener('click', this.onMouseClick.bind(this));
+        this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+        window.addEventListener('resize', this.onWindowResize.bind(this));
+    }
+
+    onMouseClick(event) {
+        if (this.game.isGameOver) return;
+        
+        // Don't block clicks entirely - let the game logic decide
+
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+        for (const intersect of intersects) {
+            const object = intersect.object;
+            if (object.userData.isSquare) {
+                const { row, col } = object.userData;
+                if (this.onSquareClick) {
+                    this.onSquareClick(row, col);
+                }
+                break;
+            }
+        }
+    }
+
+    onMouseMove(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+        this.canvas.style.cursor = 'default';
+        for (const intersect of intersects) {
+            const object = intersect.object;
+            if (object.userData.isSquare || object.userData.piece) {
+                this.canvas.style.cursor = 'pointer';
+                break;
+            }
+        }
+    }
+
+    onWindowResize() {
+        const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+        this.camera.aspect = aspect;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+    }
+
+    setCameraView(view) {
+        const duration = 1000;
+        const startPos = this.camera.position.clone();
+        const startRot = this.camera.rotation.clone();
+        
+        let targetPos, targetLookAt;
+        
+        switch(view) {
+            case 'top':
+                targetPos = new THREE.Vector3(0, 15, 0.1);
+                targetLookAt = new THREE.Vector3(0, 0, 0);
+                break;
+            case 'side':
+                targetPos = new THREE.Vector3(15, 8, 0);
+                targetLookAt = new THREE.Vector3(0, 0, 0);
+                break;
+            case 'perspective':
+            default:
+                targetPos = new THREE.Vector3(0, 12, 12);
+                targetLookAt = new THREE.Vector3(0, 0, 0);
+                break;
+        }
+
+        const startTime = Date.now();
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easeProgress = this.easeInOutQuad(progress);
+
+            this.camera.position.lerpVectors(startPos, targetPos, easeProgress);
+            this.camera.lookAt(targetLookAt);
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+
+        animate();
+    }
+
+    startAutoRotate() {
+        this.isRotating = !this.isRotating;
+        if (this.isRotating) {
+            this.controls.autoRotate = true;
+            this.controls.autoRotateSpeed = 2;
+        } else {
+            this.controls.autoRotate = false;
+        }
+    }
+
+    animate() {
+        requestAnimationFrame(this.animate.bind(this));
+        
+        this.controls.update();
+        
+        this.validMoveIndicators.forEach((indicator, index) => {
+            indicator.material.opacity = 0.4 + Math.sin(Date.now() * 0.003 + index) * 0.2;
+        });
+        
+        if (this.selectedPieceGlow) {
+            this.selectedPieceGlow.material.opacity = 0.6 + Math.sin(Date.now() * 0.005) * 0.3;
+        }
+        
+        this.hintHighlights.forEach((highlight, index) => {
+            if (highlight.material) {
+                highlight.material.opacity = 0.5 + Math.sin(Date.now() * 0.004 + index) * 0.3;
+            }
+        });
+        
+        this.renderer.render(this.scene, this.camera);
+    }
+}

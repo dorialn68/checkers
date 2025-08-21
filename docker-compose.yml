@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  checkers:
+    build: .
+    image: dorialn68/3d-checkers:latest
+    container_name: 3d-checkers-game
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - checkers-network
+
+networks:
+  checkers-network:
+    driver: bridge

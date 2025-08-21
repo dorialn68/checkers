@@ -1,0 +1,77 @@
+{
+  "name": "3d-checkers-pro",
+  "version": "1.0.0",
+  "description": "Professional 3D Checkers game with AI opponent and LLM integration",
+  "main": "build-executable.js",
+  "scripts": {
+    "start": "python -m http.server 8000 || python3 -m http.server 8000",
+    "serve": "npx http-server -p 8000",
+    "deploy": "gh-pages -d .",
+    "electron": "electron .",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux",
+    "build-all": "electron-builder -mwl",
+    "docker-build": "docker build -t dorialn68/3d-checkers .",
+    "docker-run": "docker run -p 8080:80 dorialn68/3d-checkers"
+  },
+  "keywords": [
+    "checkers",
+    "draughts",
+    "game",
+    "3D",
+    "threejs",
+    "AI",
+    "minimax",
+    "LLM",
+    "web-game"
+  ],
+  "author": "dorialn68",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.0.0",
+    "gh-pages": "^6.0.0",
+    "http-server": "^14.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dorialn68/checkers.git"
+  },
+  "homepage": "https://dorialn68.github.io/checkers/",
+  "build": {
+    "appId": "com.dorialn68.checkers3d",
+    "productName": "3D Checkers Pro",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "*.html",
+      "*.css",
+      "*.js",
+      "!build-executable.js",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon.icns",
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "icon.png",
+      "category": "Game"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Checkers Pro - Advanced AI-Powered Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader"></div>
+        <p>Loading 3D Checkers...</p>
+    </div>
+
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">3D Checkers Pro</h1>
+            <div class="game-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Turn:</span>
+                    <span id="current-turn" class="stat-value">Red</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Mode:</span>
+                    <span id="game-mode" class="stat-value">PvP</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Score:</span>
+                    <span class="stat-value">
+                        <span id="red-score">12</span> - <span id="black-score">12</span>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar sidebar-left">
+                <div class="panel">
+                    <h3>Game Mode</h3>
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" data-mode="pvp">
+                            <span class="mode-icon">👥</span>
+                            Person vs Person
+                        </button>
+                        <button class="mode-btn" data-mode="pvc">
+                            <span class="mode-icon">🤖</span>
+                            Person vs Computer
+                        </button>
+                        <button class="mode-btn" data-mode="helper">
+                            <span class="mode-icon">💡</span>
+                            Agent Helper Mode
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>AI Difficulty</h3>
+                    <div class="difficulty-selector">
+                        <button class="diff-btn" data-level="easy">Easy</button>
+                        <button class="diff-btn active" data-level="medium">Medium</button>
+                        <button class="diff-btn" data-level="hard">Hard</button>
+                        <button class="diff-btn" data-level="expert">Expert</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Camera Controls</h3>
+                    <div class="camera-controls">
+                        <button id="cam-top" class="cam-btn">Top View</button>
+                        <button id="cam-side" class="cam-btn">Side View</button>
+                        <button id="cam-perspective" class="cam-btn">3D View</button>
+                        <button id="cam-rotate" class="cam-btn">Auto Rotate</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Game Rules</h3>
+                    <div class="rule-options">
+                        <label class="rule-toggle">
+                            <input type="checkbox" id="backward-capture" checked>
+                            <span>Backward Capture</span>
+                            <small>Regular pieces can capture backwards</small>
+                        </label>
+                        <label class="rule-toggle">
+                            <input type="checkbox" id="flying-kings" checked>
+                            <span>Flying Kings</span>
+                            <small>Kings move like chess bishops</small>
+                        </label>
+                        <label class="rule-toggle">
+                            <input type="checkbox" id="mandatory-capture" checked>
+                            <span>Mandatory Capture</span>
+                            <small>Must capture when possible</small>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Game Controls</h3>
+                    <div class="game-controls">
+                        <button id="new-game" class="control-btn">New Game</button>
+                        <button id="undo-move" class="control-btn">Undo Move</button>
+                        <button id="show-hint" class="control-btn hint-btn">Show Hint</button>
+                        <button id="show-rules" class="control-btn">Rules</button>
+                        <button id="online-play" class="control-btn online-btn">Play Online</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-board-container">
+                <canvas id="game-canvas"></canvas>
+                <div class="move-indicator" id="move-indicator"></div>
+                <div class="board-legend">
+                    <div class="legend-text">Board Coordinates: A-H (columns) × 1-8 (rows)</div>
+                    <div class="legend-text">Each black square shows its coordinate (e.g., A1, B2, C3)</div>
+                </div>
+            </div>
+
+            <div class="sidebar sidebar-right">
+                <div class="panel chat-panel">
+                    <h3>AI Assistant</h3>
+                    <div class="ai-settings">
+                        <select id="llm-provider" class="llm-select">
+                            <option value="local">Built-in AI (No API needed)</option>
+                            <option value="openai">OpenAI GPT-3.5</option>
+                            <option value="anthropic">Claude Haiku</option>
+                            <option value="groq">Groq (Fast & Free)</option>
+                        </select>
+                        <input type="password" id="api-key" class="api-key-input" placeholder="API Key (if needed)" style="display: none;">
+                        <div class="token-info">
+                            <span>Est. cost: $<span id="token-cost">0.00</span></span>
+                        </div>
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-message ai-message">
+                            <strong>AI Assistant:</strong> Welcome! I'm using the built-in AI engine (no API key needed). I can analyze positions, suggest moves, and explain strategies. Click "Analyze Board" or ask me anything!
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" class="chat-input" placeholder="Ask for move suggestions...">
+                        <button id="chat-send" class="chat-send">Send</button>
+                        <button id="analyze-board" class="analyze-btn">Analyze Board</button>
+                    </div>
+                </div>
+
+                <div class="panel move-history-panel">
+                    <h3>Move History</h3>
+                    <div class="move-history" id="move-history">
+                        <div class="history-empty">No moves yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Checkers Rules</h2>
+            <div class="rules-content">
+                <h3>Enhanced Rules (NEW!):</h3>
+                <ul>
+                    <li><strong>Movement:</strong> Regular pieces move diagonally forward one square</li>
+                    <li><strong>Backward Capture:</strong> 🆕 Regular pieces can now capture backwards!</li>
+                    <li><strong>Flying Kings:</strong> 🆕 Kings can move multiple squares diagonally and jump from distance!</li>
+                    <li><strong>Capturing:</strong> Jump over opponent's pieces (mandatory when possible)</li>
+                    <li><strong>Multiple Jumps:</strong> Must continue jumping if possible after a capture</li>
+                    <li><strong>Winning:</strong> Capture all opponent pieces or block all their moves</li>
+                </ul>
+                
+                <h3>Controls:</h3>
+                <ul>
+                    <li>Click a piece to select it</li>
+                    <li>Click a highlighted square to move</li>
+                    <li>Use mouse to rotate the 3D board</li>
+                    <li>Scroll to zoom in/out</li>
+                </ul>
+
+                <h3>Special Features:</h3>
+                <ul>
+                    <li><strong>AI Helper:</strong> Get move suggestions from the AI assistant</li>
+                    <li><strong>Agent Mode:</strong> AI highlights best moves in real-time</li>
+                    <li><strong>3D View:</strong> Rotate camera for different perspectives</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="game-logic.js"></script>
+    <script src="ai-opponent.js"></script>
+    <script src="3d-renderer.js"></script>
+    <script src="llm-integration.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

@@ -45,7 +45,7 @@ Play the game at: [https://[your-username].github.io/checkers/](https://[your-us
 ## 🚀 Quick Start
 
 ### Play Online
-1. Visit the [live demo](https://[your-username].github.io/checkers/)
+1. Visit the [live demo](https://daloni68.github.io/checkers/)
 2. Select your game mode
 3. Start playing!
 

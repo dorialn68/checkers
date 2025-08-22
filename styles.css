@@ -370,6 +370,7 @@ input[type="color"]:hover {
     justify-content: center;
     align-items: center;
     flex-direction: column;
+    padding: 20px;
 }
 
 #game-canvas {
@@ -621,4 +622,86 @@ input[type="color"]:hover {
     .game-board-container {
         height: 500px;
     }
+}
+
+/* Playback Controls Styling */
+#playback-controls-container {
+    width: 100%;
+    max-width: 700px;
+    margin: 20px auto;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.95), rgba(118, 75, 162, 0.95));
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#playback-controls-container strong {
+    color: white;
+    font-size: 1.1em;
+}
+
+#playback-move-info {
+    color: #e0e0e0;
+    font-size: 0.95em;
+}
+
+#playback-timeline {
+    height: 45px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    margin: 15px 0;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+#playback-timeline .timeline-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #ffd700, #ffed4e);
+    border-radius: 25px;
+    width: 0%;
+    transition: width 0.3s ease;
+    position: absolute;
+    left: 0;
+    top: 0;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+#playback-controls-container .control-btn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#playback-controls-container .control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: white;
+}
+
+#playback-controls-container .control-btn:active {
+    transform: translateY(0);
+}
+
+#playback-play-btn {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    font-size: 20px;
+    padding: 10px 20px;
+}
+
+#playback-controls-container label {
+    color: white;
+    font-weight: 600;
+    margin-right: 10px;
 }

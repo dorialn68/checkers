@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Virtual Game Test - AI vs AI</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a2e;
+            color: #fff;
+            padding: 20px;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a3e;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #45a049; }
+        .game-container {
+            display: flex;
+            gap: 30px;
+        }
+        .board {
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .stats {
+            background: #2a2a3e;
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 300px;
+        }
+        .log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #1a1a2e;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            background: #2a2a3e;
+            border-radius: 3px;
+        }
+        .error { background: #4d2a2a; color: #ff6666; }
+        .success { background: #2a4d2a; color: #66ff66; }
+        .warning { background: #4d4d2a; color: #ffff66; }
+    </style>
+</head>
+<body>
+    <h1>🤖 Virtual Game Test - AI vs AI</h1>
+    
+    <div class="controls">
+        <button onclick="startVirtualGame()">Start AI vs AI Game</button>
+        <button onclick="pauseGame()">Pause</button>
+        <button onclick="resumeGame()">Resume</button>
+        <button onclick="runFullTest()">Run Full Test Suite</button>
+        <label>
+            Speed: 
+            <input type="range" id="speed" min="100" max="2000" value="1000">
+            <span id="speed-value">1000ms</span>
+        </label>
+    </div>
+    
+    <div class="game-container">
+        <div class="board">
+            <canvas id="test-canvas" width="400" height="400"></canvas>
+        </div>
+        
+        <div class="stats">
+            <h3>Game Statistics</h3>
+            <div id="stats-display">
+                <p>Turn: <span id="turn-count">0</span></p>
+                <p>Red Pieces: <span id="red-count">12</span></p>
+                <p>Black Pieces: <span id="black-count">12</span></p>
+                <p>Current Player: <span id="current-player">red</span></p>
+                <p>Game Status: <span id="game-status">Ready</span></p>
+                <p>Jumps Available: <span id="jumps-available">0</span></p>
+                <p>Time per Move: <span id="move-time">0ms</span></p>
+            </div>
+            
+            <h3>Test Results</h3>
+            <div id="test-results"></div>
+            
+            <h3>Move Log</h3>
+            <div id="move-log" class="log"></div>
+        </div>
+    </div>
+    
+    <script src="game-logic.js"></script>
+    <script src="ai-opponent.js"></script>
+    <script>
+        let virtualGame = null;
+        let redAI = null;
+        let blackAI = null;
+        let gameInterval = null;
+        let turnCount = 0;
+        let isPaused = false;
+        let moveSpeed = 1000;
+        let testResults = [];
+        
+        // Initialize
+        document.getElementById('speed').addEventListener('input', (e) => {
+            moveSpeed = parseInt(e.target.value);
+            document.getElementById('speed-value').textContent = moveSpeed + 'ms';
+        });
+        
+        function startVirtualGame() {
+            // Create new game and AIs
+            virtualGame = new CheckersGame();
+            redAI = new CheckersAI('medium');
+            blackAI = new CheckersAI('hard');
+            turnCount = 0;
+            
+            logMove('Game started: Red AI (medium) vs Black AI (hard)', 'success');
+            updateDisplay();
+            drawBoard();
+            
+            // Start game loop
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(makeNextMove, moveSpeed);
+        }
+        
+        async function makeNextMove() {
+            if (isPaused || !virtualGame || virtualGame.isGameOver) {
+                if (virtualGame?.isGameOver) {
+                    clearInterval(gameInterval);
+                    logMove(`Game Over! Winner: ${virtualGame.winner}`, 'success');
+                    document.getElementById('game-status').textContent = `Winner: ${virtualGame.winner}`;
+                }
+                return;
+            }
+            
+            const startTime = Date.now();
+            const currentPlayer = virtualGame.currentPlayer;
+            const ai = currentPlayer === 'red' ? redAI : blackAI;
+            
+            try {
+                // Check for mandatory jumps
+                const jumps = virtualGame.getAllJumpsForPlayer(currentPlayer);
+                const hasJumps = jumps.length > 0;
+                
+                // Get AI move
+                const move = await ai.getBestMove(virtualGame, currentPlayer);
+                
+                if (!move) {
+                    logMove(`ERROR: ${currentPlayer} AI returned no move!`, 'error');
+                    testResults.push({
+                        test: 'AI Move Generation',
+                        status: 'FAILED',
+                        details: `${currentPlayer} AI failed to generate move at turn ${turnCount}`
+                    });
+                    pauseGame();
+                    return;
+                }
+                
+                // Validate move
+                if (hasJumps && !isJumpMove(move)) {
+                    logMove(`BUG: ${currentPlayer} didn't take mandatory jump!`, 'error');
+                    testResults.push({
+                        test: 'Mandatory Jump',
+                        status: 'FAILED',
+                        details: `${currentPlayer} ignored mandatory jump at turn ${turnCount}`
+                    });
+                }
+                
+                // Make the move
+                virtualGame.selectPiece(move.from.row, move.from.col);
+                const moveSuccess = virtualGame.makeMove(move.to.row, move.to.col);
+                
+                if (!moveSuccess) {
+                    logMove(`ERROR: Invalid move by ${currentPlayer}!`, 'error');
+                    testResults.push({
+                        test: 'Move Validation',
+                        status: 'FAILED',
+                        details: `Invalid move at turn ${turnCount}: ${formatMove(move)}`
+                    });
+                    pauseGame();
+                    return;
+                }
+                
+                const moveTime = Date.now() - startTime;
+                turnCount++;
+                
+                logMove(`Turn ${turnCount}: ${currentPlayer} moved ${formatMove(move)} (${moveTime}ms)`, 
+                       hasJumps ? 'warning' : 'normal');
+                
+                document.getElementById('move-time').textContent = moveTime + 'ms';
+                updateDisplay();
+                drawBoard();
+                
+                // Check for stuck states
+                if (turnCount > 200) {
+                    logMove('WARNING: Game exceeded 200 moves - possible infinite loop', 'warning');
+                    pauseGame();
+                }
+                
+            } catch (error) {
+                logMove(`EXCEPTION: ${error.message}`, 'error');
+                console.error(error);
+                pauseGame();
+            }
+        }
+        
+        function isJumpMove(move) {
+            const rowDiff = Math.abs(move.to.row - move.from.row);
+            return rowDiff > 1;
+        }
+        
+        function formatMove(move) {
+            const fromCol = String.fromCharCode(65 + move.from.col);
+            const fromRow = 8 - move.from.row;
+            const toCol = String.fromCharCode(65 + move.to.col);
+            const toRow = 8 - move.to.row;
+            return `${fromCol}${fromRow} to ${toCol}${toRow}`;
+        }
+        
+        function updateDisplay() {
+            if (!virtualGame) return;
+            
+            // Count pieces
+            let redCount = 0, blackCount = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = virtualGame.board[row][col];
+                    if (piece) {
+                        if (piece.color === 'red') redCount++;
+                        else blackCount++;
+                    }
+                }
+            }
+            
+            document.getElementById('turn-count').textContent = turnCount;
+            document.getElementById('red-count').textContent = redCount;
+            document.getElementById('black-count').textContent = blackCount;
+            document.getElementById('current-player').textContent = virtualGame.currentPlayer;
+            document.getElementById('jumps-available').textContent = 
+                virtualGame.getAllJumpsForPlayer(virtualGame.currentPlayer).length;
+        }
+        
+        function drawBoard() {
+            const canvas = document.getElementById('test-canvas');
+            const ctx = canvas.getContext('2d');
+            const cellSize = 50;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw board
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const isBlack = (row + col) % 2 === 1;
+                    ctx.fillStyle = isBlack ? '#654321' : '#f0d9b5';
+                    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                    
+                    // Draw piece
+                    const piece = virtualGame.board[row][col];
+                    if (piece) {
+                        ctx.beginPath();
+                        ctx.arc(col * cellSize + 25, row * cellSize + 25, 18, 0, Math.PI * 2);
+                        ctx.fillStyle = piece.color === 'red' ? '#cc0000' : '#1a1a1a';
+                        ctx.fill();
+                        
+                        if (piece.isKing) {
+                            ctx.fillStyle = '#ffd700';
+                            ctx.font = 'bold 16px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('♔', col * cellSize + 25, row * cellSize + 30);
+                        }
+                    }
+                }
+            }
+        }
+        
+        function logMove(message, type = 'normal') {
+            const log = document.getElementById('move-log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.insertBefore(entry, log.firstChild);
+            
+            // Keep only last 50 entries
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+        
+        function pauseGame() {
+            isPaused = true;
+            document.getElementById('game-status').textContent = 'Paused';
+        }
+        
+        function resumeGame() {
+            isPaused = false;
+            document.getElementById('game-status').textContent = 'Running';
+        }
+        
+        function runFullTest() {
+            testResults = [];
+            logMove('Starting comprehensive test suite...', 'success');
+            
+            // Test 1: Basic game initialization
+            const testGame = new CheckersGame();
+            const test1Pass = countPieces(testGame) === 24;
+            testResults.push({
+                test: 'Game Initialization',
+                status: test1Pass ? 'PASSED' : 'FAILED',
+                details: `Expected 24 pieces, found ${countPieces(testGame)}`
+            });
+            
+            // Test 2: Jump detection
+            testGame.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            testGame.board[4][3] = { color: 'red', isKing: false };
+            testGame.board[3][4] = { color: 'black', isKing: false };
+            const jumps = testGame.getAllJumpsForPlayer('red');
+            const test2Pass = jumps.length > 0;
+            testResults.push({
+                test: 'Jump Detection',
+                status: test2Pass ? 'PASSED' : 'FAILED',
+                details: `Found ${jumps.length} jumps for red`
+            });
+            
+            // Display results
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '';
+            testResults.forEach(result => {
+                const div = document.createElement('div');
+                div.className = result.status === 'PASSED' ? 'success' : 'error';
+                div.textContent = `${result.test}: ${result.status} - ${result.details}`;
+                resultsDiv.appendChild(div);
+            });
+            
+            // Run virtual game
+            startVirtualGame();
+        }
+        
+        function countPieces(game) {
+            let count = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (game.board[row][col]) count++;
+                }
+            }
+            return count;
+        }
+    </script>
+</body>
+</html>

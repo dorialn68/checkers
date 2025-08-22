@@ -2,11 +2,14 @@ let game = null;
 let renderer = null;
 let ai = null;
 let llm = null;
+let gameAnalytics = null;
+let playbackController = null;
 let currentMode = 'pvc';  // Default to PvC mode
 let aiDifficulty = 'medium';
 let isAIThinking = false;
 let helperMode = false;
 let moveHistoryCount = 0;
+let moveStartTime = null;
 
 // Player side determines which pieces they control (red or black)
 let playerSide = 'red';  // Which side the human plays (red or black)
@@ -16,7 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeGame();
     setupEventListeners();
     hideLoadingScreen();
+    
+    // Start move validation monitoring
+    if (window.moveValidator) {
+        window.moveValidator.startMonitoring(game);
+    }
 });
+
+// Make functions globally available for validator
+window.makeAIMove = makeAIMove;
+window.currentMode = currentMode;
+window.computerSide = computerSide;
 
 function initializeGame() {
     const canvas = document.getElementById('game-canvas');
@@ -25,6 +38,15 @@ function initializeGame() {
     renderer = new Checkers3DRenderer(canvas, game);
     ai = new CheckersAI(aiDifficulty);
     llm = new LLMIntegration();
+    gameAnalytics = new GameAnalytics();
+    playbackController = new PlaybackController(game, renderer);
+    
+    // Make it globally available for onclick handlers
+    window.playbackController = playbackController;
+    
+    // Start recording analytics
+    gameAnalytics.startRecording();
+    moveStartTime = Date.now();
     
     renderer.onSquareClick = handleSquareClick;
     
@@ -127,11 +149,26 @@ function setupEventListeners() {
     document.getElementById('undo-move').addEventListener('click', undoMove);
     document.getElementById('show-hint').addEventListener('click', showHint);
     document.getElementById('show-rules').addEventListener('click', showRules);
+    document.getElementById('view-analytics').addEventListener('click', showAnalytics);
+    document.getElementById('enter-playback').addEventListener('click', enterPlaybackMode);
     document.getElementById('online-play').addEventListener('click', showOnlinePlayModal);
     
     // Debug tools
     document.getElementById('capture-screenshot').addEventListener('click', captureScreenshot);
     document.getElementById('copy-board-state').addEventListener('click', copyBoardState);
+    
+    // Timeline click handler for playback
+    const timeline = document.getElementById('playback-timeline');
+    if (timeline) {
+        timeline.addEventListener('click', (e) => {
+            if (!playbackController || !playbackController.isPlaybackMode) return;
+            
+            const rect = timeline.getBoundingClientRect();
+            const percent = (e.clientX - rect.left) / rect.width;
+            const targetMove = Math.floor(percent * playbackController.fullGameHistory.length);
+            playbackController.goToMove(targetMove);
+        });
+    }
 
     // Rule toggles
     document.getElementById('backward-capture').addEventListener('change', (e) => {
@@ -156,11 +193,15 @@ function setupEventListeners() {
         llm.setProvider(provider);
         
         const apiKeyInput = document.getElementById('api-key');
+        const warning = document.getElementById('api-key-warning');
+        
         if (provider === 'local') {
             apiKeyInput.style.display = 'none';
+            if (warning) warning.style.display = 'none';
         } else {
             apiKeyInput.style.display = 'block';
             apiKeyInput.placeholder = `Enter ${provider} API key`;
+            if (warning) warning.style.display = 'block';
         }
     });
 
@@ -271,12 +312,30 @@ function makeMove(row, col) {
     const to = { row, col };
     
     renderer.animateMove(from, to, () => {
+        const validMove = game.validMoves.find(m => m.row === row && m.col === col);
         const moveSuccessful = game.makeMove(row, col);
         
         if (moveSuccessful) {
+            // Record analytics
+            const timeTaken = Date.now() - moveStartTime;
+            gameAnalytics.recordMove({
+                from,
+                to,
+                player: game.currentPlayer === 'red' ? 'black' : 'red', // Previous player made the move
+                isJump: validMove && validMove.isJump,
+                wasKing: game.board[to.row][to.col]?.wasKing || false
+            }, game, timeTaken);
+            moveStartTime = Date.now();
+            
             renderer.updateBoard();
             updateUI();
+            updateMoveCount();
             addMoveToHistory(from, to);
+            
+            // Notify validator that a move was made
+            if (window.moveValidator) {
+                window.moveValidator.onMoveMade();
+            }
             
             if (!game.multiJumpMode) {
                 if (game.isGameOver) {
@@ -305,7 +364,12 @@ function makeMove(row, col) {
 }
 
 async function makeAIMove() {
-    if (game.isGameOver || game.currentPlayer !== computerSide) return;
+    if (game.isGameOver || game.currentPlayer !== computerSide) {
+        console.log(`AI move skipped - Game over: ${game.isGameOver}, Current: ${game.currentPlayer}, Computer: ${computerSide}`);
+        return;
+    }
+    
+    console.log(`AI (${computerSide}) starting move calculation...`);
     
     isAIThinking = true;
     showMoveIndicator('AI is thinking...');
@@ -414,14 +478,76 @@ function startNewGame() {
 }
 
 function undoMove() {
-    if (game.undoLastMove()) {
+    // Don't allow undo in playback mode
+    if (playbackController && playbackController.isPlaybackMode) {
+        showMoveIndicator('Exit playback mode to undo');
+        setTimeout(() => hideMoveIndicator(), 2000);
+        return;
+    }
+    
+    // Get undo settings
+    const undoLimit = parseInt(document.getElementById('undo-limit').value);
+    const undoBothPlayers = document.getElementById('undo-both-players').checked;
+    
+    // Calculate how many moves to undo
+    let undoCount = 1;
+    if (undoBothPlayers && currentMode === 'pvc') {
+        // Undo both player and computer moves
+        undoCount = 2;
+    }
+    
+    // Check if we can undo
+    if (undoLimit !== -1 && game.moveHistory.length > undoLimit * 2) {
+        showMoveIndicator(`Can only undo last ${undoLimit} turn(s)`);
+        setTimeout(() => hideMoveIndicator(), 2000);
+        return;
+    }
+    
+    const undone = game.undoLastMove(undoCount);
+    if (undone) {
         renderer.updateBoard();
         updateUI();
+        updateMoveCount();
         removeLastMoveFromHistory();
+        showMoveIndicator(`Undone ${undone} move(s)`);
+        
+        // Update analytics
+        if (gameAnalytics) {
+            moveStartTime = Date.now();
+        }
         
         if (helperMode) {
             showAgentSuggestions();
         }
+        
+        setTimeout(() => hideMoveIndicator(), 2000);
+    } else {
+        showMoveIndicator('No moves to undo');
+        setTimeout(() => hideMoveIndicator(), 2000);
+    }
+}
+
+function enterPlaybackMode() {
+    if (!playbackController) return;
+    
+    if (playbackController.isPlaybackMode) {
+        playbackController.exitPlaybackMode();
+        updateUI();
+    } else {
+        if (game.moveHistory.length === 0) {
+            showMoveIndicator('No moves to replay');
+            setTimeout(() => hideMoveIndicator(), 2000);
+            return;
+        }
+        
+        playbackController.enterPlaybackMode();
+    }
+}
+
+function updateMoveCount() {
+    const counter = document.getElementById('move-count');
+    if (counter) {
+        counter.textContent = game.moveHistory.length;
     }
 }
 
@@ -429,8 +555,11 @@ function updateUI() {
     document.getElementById('current-turn').textContent = 
         game.currentPlayer.charAt(0).toUpperCase() + game.currentPlayer.slice(1);
     
-    document.getElementById('red-score').textContent = game.redPieces;
-    document.getElementById('black-score').textContent = game.blackPieces;
+    // Display captured pieces (opposite of remaining pieces)
+    const redCaptured = 12 - game.blackPieces;  // Red captured black pieces
+    const blackCaptured = 12 - game.redPieces;  // Black captured red pieces
+    document.getElementById('red-score').textContent = redCaptured;
+    document.getElementById('black-score').textContent = blackCaptured;
     
     // Only show mandatory jump message if there are actual jumps for current player
     const currentPlayerJumps = game.getAllJumpsForPlayer(game.currentPlayer);
@@ -497,10 +626,79 @@ function clearMoveHistory() {
 
 function showGameOver() {
     const winner = game.winner.charAt(0).toUpperCase() + game.winner.slice(1);
-    showMoveIndicator(`Game Over! ${winner} wins!`);
+    showMoveIndicator(`Game Over! ${winner} wins! View Analytics to see detailed stats and replay.`);
     
-    addChatMessage('ai', `🎉 Congratulations! ${winner} has won the game!`);
+    addChatMessage('ai', `🎉 Congratulations! ${winner} has won the game! Click "📊 Analytics" to review the game.`);
+    
+    // End analytics recording
+    const stats = gameAnalytics.endGame(game.winner);
+    
+    // Auto-save the completed game
+    autoSaveGame();
 }
+
+function autoSaveGame() {
+    try {
+        // Save to localStorage
+        const gameHistory = JSON.parse(localStorage.getItem('checkersGameHistory') || '[]');
+        const gameData = {
+            ...gameAnalytics.gameData,
+            savedAt: Date.now(),
+            id: `game_${Date.now()}`
+        };
+        
+        // Keep only last 10 games
+        gameHistory.unshift(gameData);
+        if (gameHistory.length > 10) {
+            gameHistory.pop();
+        }
+        
+        localStorage.setItem('checkersGameHistory', JSON.stringify(gameHistory));
+        localStorage.setItem('lastGame', JSON.stringify(gameData));
+        
+        console.log('Game auto-saved successfully');
+    } catch (e) {
+        console.error('Failed to auto-save game:', e);
+    }
+}
+
+function showAnalytics() {
+    const analyticsWindow = window.open('analytics-view.html', 'analytics', 'width=1400,height=900');
+    
+    // Send analytics data to the new window
+    analyticsWindow.addEventListener('load', () => {
+        analyticsWindow.postMessage({
+            type: 'analytics-data',
+            data: {
+                stats: gameAnalytics.calculateGameStats(),
+                graphData: gameAnalytics.getGraphData(),
+                gameData: gameAnalytics.gameData
+            }
+        }, '*');
+    });
+}
+
+function openPlaybackViewer() {
+    const playbackWindow = window.open('playback-viewer.html', 'playback', 'width=1600,height=900');
+    // The playback viewer will get data from window.opener.gameAnalytics
+}
+
+// Make it globally available
+window.openPlaybackViewer = openPlaybackViewer;
+
+// Listen for analytics requests
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'request-analytics' && gameAnalytics) {
+        event.source.postMessage({
+            type: 'analytics-data',
+            data: {
+                stats: gameAnalytics.calculateGameStats(),
+                graphData: gameAnalytics.getGraphData(),
+                gameData: gameAnalytics.gameData
+            }
+        }, '*');
+    }
+});
 
 function showRules() {
     document.getElementById('rules-modal').style.display = 'block';
@@ -530,36 +728,51 @@ function updatePieceColors() {
 }
 
 function captureScreenshot() {
-    // Use html2canvas or native canvas capture
-    const canvas = document.getElementById('game-canvas');
-    canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        a.download = `checkers-bug-${timestamp}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        // Show confirmation
-        const debugInfo = document.getElementById('debug-info');
-        debugInfo.textContent = 'Screenshot saved! Check your Downloads folder.';
-        debugInfo.style.display = 'block';
-        setTimeout(() => {
-            debugInfo.style.display = 'none';
-        }, 3000);
-    });
+    // Use the new bug capture tool
+    if (window.bugCapture) {
+        window.bugCapture.startCapture();
+        showMoveIndicator('Select area to capture bug');
+    } else {
+        // Fallback to canvas capture
+        const canvas = document.getElementById('game-canvas');
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = `checkers-bug-${timestamp}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            // Show confirmation
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.textContent = 'Screenshot saved! Check your Downloads folder.';
+            debugInfo.style.display = 'block';
+            setTimeout(() => {
+                debugInfo.style.display = 'none';
+            }, 3000);
+        });
+    }
 }
 
 function copyBoardState() {
-    // Create a text representation of the board state
+    // Create a comprehensive board state with issue detection
     const boardState = {
         currentPlayer: game.currentPlayer,
         board: [],
         moveHistory: game.moveHistory,
         rules: game.rules,
-        mandatoryJumps: game.mandatoryJumps
+        mandatoryJumps: game.mandatoryJumps,
+        detectedIssues: []
     };
+    
+    // Detect logical issues
+    if (window.bugCapture) {
+        const issues = window.bugCapture.detectLogicalIssues();
+        if (issues.length > 0) {
+            boardState.detectedIssues = issues;
+        }
+    }
     
     // Convert board to readable format
     for (let row = 0; row < 8; row++) {

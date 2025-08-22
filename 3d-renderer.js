@@ -298,27 +298,27 @@ class Checkers3DRenderer {
                 });
                 
                 this.pieces.forEach(piece => {
-                    if (piece.mesh && piece.mesh.material) {
-                        const key = `${piece.row},${piece.col}`;
+                    if (piece && piece.material && piece.userData) {
+                        const key = `${piece.userData.row},${piece.userData.col}`;
                         if (mustJumpPieces.has(key)) {
                             // Pieces that must jump - bright glow
-                            piece.mesh.material.emissiveIntensity = 0.5;
-                        } else if (this.game.board[piece.row][piece.col]?.color === this.game.currentPlayer) {
+                            piece.material.emissiveIntensity = 0.5;
+                        } else if (this.game.board[piece.userData.row][piece.userData.col]?.color === this.game.currentPlayer) {
                             // Other pieces of current player - dimmed
-                            piece.mesh.material.emissiveIntensity = 0.05;
+                            piece.material.emissiveIntensity = 0.05;
                         }
-                        piece.mesh.material.needsUpdate = true;
+                        piece.material.needsUpdate = true;
                     }
                 });
             } else {
                 // No mandatory jumps - show all pieces that can move
                 this.pieces.forEach(piece => {
-                    if (piece.mesh && piece.mesh.material) {
-                        const boardPiece = this.game.board[piece.row][piece.col];
+                    if (piece && piece.material && piece.userData) {
+                        const boardPiece = this.game.board[piece.userData.row][piece.userData.col];
                         if (boardPiece && boardPiece.color === this.game.currentPlayer) {
-                            const moves = this.game.getValidMoves(piece.row, piece.col);
-                            piece.mesh.material.emissiveIntensity = moves.length > 0 ? 0.25 : 0.05;
-                            piece.mesh.material.needsUpdate = true;
+                            const moves = this.game.getValidMoves(piece.userData.row, piece.userData.col);
+                            piece.material.emissiveIntensity = moves.length > 0 ? 0.25 : 0.05;
+                            piece.material.needsUpdate = true;
                         }
                     }
                 });
@@ -598,9 +598,9 @@ class Checkers3DRenderer {
         this.shininessLevel = level;
         // Update all piece materials
         this.pieces.forEach(piece => {
-            if (piece.mesh && piece.mesh.material) {
-                piece.mesh.material.shininess = Math.max(10, level * 100);
-                piece.mesh.material.needsUpdate = true;
+            if (piece && piece.material) {
+                piece.material.shininess = Math.max(10, level * 100);
+                piece.material.needsUpdate = true;
             }
         });
     }

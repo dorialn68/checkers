@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Playback - Learn from Recorded Games</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .playback-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 350px 800px 350px;
+            gap: 20px;
+        }
+        
+        .playback-board {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .playback-controls-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .playback-info {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.8em;
+            text-align: center;
+        }
+        
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        #playback-canvas {
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .control-btn.active {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        
+        .timeline-container {
+            margin: 20px 0;
+        }
+        
+        .timeline {
+            position: relative;
+            height: 50px;
+            background: #e0e0e0;
+            border-radius: 25px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .timeline-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 25px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        
+        .timeline-handle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            left: 0%;
+        }
+        
+        .timeline-markers {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .marker {
+            position: absolute;
+            width: 3px;
+            height: 100%;
+            background: #ffd700;
+            opacity: 0.7;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .speed-btn {
+            padding: 5px 15px;
+            background: #f0f0f0;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .speed-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .move-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .move-number {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .move-details {
+            margin-top: 10px;
+            font-family: monospace;
+        }
+        
+        .key-moments {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .moment-item {
+            background: #f8f9fa;
+            border-left: 4px solid #ffd700;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .moment-item:hover {
+            background: #e9ecef;
+        }
+        
+        .stats-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .no-data-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .instructions {
+            background: #fffbf0;
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .instructions h4 {
+            margin-top: 0;
+            color: #d4a000;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+        
+        .load-btn {
+            background: #28a745;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .load-btn:hover {
+            background: #218838;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .file-label {
+            display: block;
+            text-align: center;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        
+        .file-label:hover {
+            background: #5a67d8;
+        }
+    </style>
+</head>
+<body>
+    <div class="playback-container">
+        <!-- Left Panel - Controls and Settings -->
+        <div class="playback-controls-panel">
+            <h2>📹 Game Playback</h2>
+            
+            <!-- Instructions -->
+            <div class="instructions">
+                <h4>📚 How to Use Playback</h4>
+                <ol>
+                    <li><strong>Current Game:</strong> Click "Load Current Game" to replay the game you just played</li>
+                    <li><strong>Saved Game:</strong> Click "Choose File" to load a previously exported game (.json file)</li>
+                    <li><strong>Export Games:</strong> Use "📊 Analytics" → "Export Game" to save games</li>
+                    <li><strong>Controls:</strong> Use play/pause buttons or click timeline to navigate</li>
+                </ol>
+            </div>
+            
+            <!-- Load Game Section -->
+            <h3>Load Recording</h3>
+            <button class="control-btn load-btn" onclick="loadCurrentGame()">🎮 Load Current Game</button>
+            <button class="control-btn load-btn" onclick="loadSavedGames()" style="background: #6c757d;">📚 Browse Saved Games</button>
+            <button class="control-btn load-btn" onclick="loadSampleGame()" style="background: #fd7e14;">🎯 Load Sample Game</button>
+            <label for="file-input" class="file-label">📁 Choose Game File (.json)</label>
+            <input type="file" id="file-input" accept=".json">
+            <div id="load-status" style="text-align: center; margin-top: 10px; color: #666;"></div>
+            
+            <!-- Saved Games List -->
+            <div id="saved-games-list" style="display: none; margin-top: 10px;">
+                <h4>Recent Games:</h4>
+                <div id="games-list" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            
+            <!-- Playback Controls -->
+            <h3>Playback Controls</h3>
+            <div id="controls-section" style="opacity: 0.5; pointer-events: none;">
+                <div class="control-row">
+                    <button class="control-btn" id="btn-start" title="Go to Start">⏮</button>
+                    <button class="control-btn" id="btn-prev" title="Previous Move">⏪</button>
+                    <button class="control-btn" id="btn-play" title="Play/Pause">▶</button>
+                    <button class="control-btn" id="btn-next" title="Next Move">⏩</button>
+                    <button class="control-btn" id="btn-end" title="Go to End">⏭</button>
+                </div>
+                
+                <!-- Speed Control -->
+                <div class="speed-control">
+                    <span>Speed:</span>
+                    <button class="speed-btn" data-speed="0.5">0.5x</button>
+                    <button class="speed-btn active" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="2">2x</button>
+                    <button class="speed-btn" data-speed="4">4x</button>
+                </div>
+                
+                <!-- Timeline -->
+                <div class="timeline-container">
+                    <h3>Timeline</h3>
+                    <div class="timeline" id="timeline">
+                        <div class="timeline-progress" id="timeline-progress"></div>
+                        <div class="timeline-markers" id="timeline-markers"></div>
+                        <div class="timeline-handle" id="timeline-handle"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span id="current-time">0:00</span>
+                        <span id="total-time">0:00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Key Moments -->
+            <h3>🌟 Key Moments</h3>
+            <div class="key-moments" id="key-moments">
+                <div style="text-align: center; color: #999;">Load a game to see key moments</div>
+            </div>
+        </div>
+        
+        <!-- Center - Game Board -->
+        <div class="playback-board">
+            <h2 id="game-title">Game Replay</h2>
+            <canvas id="playback-canvas"></canvas>
+            
+            <div id="no-data" class="no-data-message">
+                <h3>No Game Loaded</h3>
+                <p>Please load a game to start playback:</p>
+                <ul style="text-align: left; display: inline-block;">
+                    <li>Click "Load Current Game" to replay your last game</li>
+                    <li>Or choose a saved game file (.json)</li>
+                </ul>
+            </div>
+            
+            <!-- Move Info -->
+            <div class="move-info" id="move-info-panel" style="display: none;">
+                <div class="move-number">Move <span id="move-num">0</span> / <span id="total-moves">0</span></div>
+                <div class="move-details">
+                    <div>Player: <span id="current-player">-</span></div>
+                    <div>Move: <span id="move-notation">-</span></div>
+                    <div>Efficiency: <span id="move-efficiency">-</span></div>
+                    <div>Time: <span id="move-time">-</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Statistics and Info -->
+        <div class="playback-info">
+            <h2>📊 Game Statistics</h2>
+            
+            <div class="stats-display">
+                <div class="stat-box">
+                    <div class="stat-value" id="red-pieces">-</div>
+                    <div class="stat-label">Red Pieces</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="black-pieces">-</div>
+                    <div class="stat-label">Black Pieces</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="red-captures">-</div>
+                    <div class="stat-label">Red Captures</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="black-captures">-</div>
+                    <div class="stat-label">Black Captures</div>
+                </div>
+            </div>
+            
+            <h3>Game Info</h3>
+            <div class="move-details">
+                <div>Duration: <span id="game-duration">-</span></div>
+                <div>Winner: <span id="game-winner">-</span></div>
+                <div>Total Moves: <span id="game-moves">-</span></div>
+            </div>
+            
+            <h3>Current Analysis</h3>
+            <div id="move-analysis" class="move-details">
+                <div id="analysis-text">Load a game to see move analysis</div>
+            </div>
+            
+            <div class="control-row" style="margin-top: 30px;">
+                <button class="control-btn save-btn" onclick="exportGame()">💾 Export</button>
+                <button class="control-btn" onclick="window.close()">✖ Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="game-logic.js"></script>
+    <script src="3d-renderer.js"></script>
+    <script src="game-analytics.js"></script>
+    <script>
+        let gameData = null;
+        let currentMoveIndex = 0;
+        let isPlaying = false;
+        let playbackSpeed = 1;
+        let playbackInterval = null;
+        let replayGame = null;
+        let replayRenderer = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            // Try to load current game automatically
+            setTimeout(() => {
+                if (window.opener && window.opener.gameAnalytics) {
+                    loadCurrentGame();
+                }
+            }, 500);
+        });
+        
+        function setupEventListeners() {
+            // Playback controls
+            document.getElementById('btn-start').addEventListener('click', goToStart);
+            document.getElementById('btn-prev').addEventListener('click', previousMove);
+            document.getElementById('btn-play').addEventListener('click', togglePlay);
+            document.getElementById('btn-next').addEventListener('click', nextMove);
+            document.getElementById('btn-end').addEventListener('click', goToEnd);
+            
+            // Speed controls
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    playbackSpeed = parseFloat(btn.dataset.speed);
+                    if (isPlaying) {
+                        stopPlayback();
+                        startPlayback();
+                    }
+                });
+            });
+            
+            // Timeline
+            const timeline = document.getElementById('timeline');
+            timeline.addEventListener('click', (e) => {
+                if (!gameData || !gameData.moves || gameData.moves.length === 0) return;
+                const rect = timeline.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                const targetMove = Math.floor(percent * gameData.moves.length);
+                jumpToMove(targetMove);
+            });
+            
+            // File input
+            document.getElementById('file-input').addEventListener('change', loadFile);
+        }
+        
+        function loadCurrentGame() {
+            const status = document.getElementById('load-status');
+            
+            // First try from window.opener
+            if (window.opener && window.opener.gameAnalytics) {
+                const analytics = window.opener.gameAnalytics;
+                if (analytics.gameData && analytics.gameData.moves && analytics.gameData.moves.length > 0) {
+                    gameData = analytics.gameData;
+                    status.textContent = `✅ Loaded current game (${gameData.moves.length} moves)`;
+                    status.style.color = '#28a745';
+                    initializePlayback();
+                    return;
+                }
+            }
+            
+            // Try from localStorage
+            const lastGame = localStorage.getItem('lastGame');
+            if (lastGame) {
+                try {
+                    gameData = JSON.parse(lastGame);
+                    if (gameData && gameData.moves && gameData.moves.length > 0) {
+                        status.textContent = `✅ Loaded last saved game (${gameData.moves.length} moves)`;
+                        status.style.color = '#28a745';
+                        initializePlayback();
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to load last game:', e);
+                }
+            }
+            
+            status.textContent = '❌ No game available. Play a game first or load a saved file.';
+            status.style.color = '#dc3545';
+        }
+        
+        function loadSavedGames() {
+            const status = document.getElementById('load-status');
+            const listContainer = document.getElementById('saved-games-list');
+            const gamesList = document.getElementById('games-list');
+            
+            try {
+                const gameHistory = JSON.parse(localStorage.getItem('checkersGameHistory') || '[]');
+                
+                if (gameHistory.length === 0) {
+                    status.textContent = '❌ No saved games found. Complete a game to auto-save it.';
+                    status.style.color = '#dc3545';
+                    return;
+                }
+                
+                // Show the list
+                listContainer.style.display = 'block';
+                gamesList.innerHTML = '';
+                
+                gameHistory.forEach((game, index) => {
+                    const date = new Date(game.savedAt || game.endTime);
+                    const item = document.createElement('div');
+                    item.style.cssText = 'padding: 8px; margin: 4px 0; background: #f0f0f0; border-radius: 5px; cursor: pointer;';
+                    item.innerHTML = `
+                        <strong>Game ${index + 1}</strong> - ${date.toLocaleDateString()} ${date.toLocaleTimeString()}<br>
+                        <small>Winner: ${game.winner || 'In Progress'} | Moves: ${game.totalMoves || game.moves?.length || 0}</small>
+                    `;
+                    item.onclick = () => {
+                        gameData = game;
+                        status.textContent = `✅ Loaded saved game #${index + 1}`;
+                        status.style.color = '#28a745';
+                        listContainer.style.display = 'none';
+                        initializePlayback();
+                    };
+                    gamesList.appendChild(item);
+                });
+                
+                status.textContent = `Found ${gameHistory.length} saved game(s)`;
+                status.style.color = '#17a2b8';
+                
+            } catch (e) {
+                status.textContent = '❌ Error loading saved games';
+                status.style.color = '#dc3545';
+                console.error('Failed to load saved games:', e);
+            }
+        }
+        
+        function loadSampleGame() {
+            const status = document.getElementById('load-status');
+            
+            // Create a sample game with interesting moves
+            const sampleGame = {
+                moves: [],
+                startTime: Date.now() - 300000, // 5 minutes ago
+                endTime: Date.now() - 60000, // 1 minute ago
+                totalMoves: 30,
+                redCaptures: 5,
+                blackCaptures: 7,
+                winner: 'black',
+                longestJumpChain: 2,
+                keyMoments: [
+                    { moveNumber: 5, type: 'first_blood', description: 'First capture of the game!', timestamp: 30000 },
+                    { moveNumber: 12, type: 'promotion', description: 'Red gets a King!', timestamp: 90000 },
+                    { moveNumber: 18, type: 'turning_point', description: 'Game advantage switches!', timestamp: 150000 },
+                    { moveNumber: 25, type: 'brilliant', description: 'Brilliant move!', timestamp: 210000 },
+                    { moveNumber: 28, type: 'endgame', description: 'Entering endgame phase', timestamp: 240000 }
+                ]
+            };
+            
+            // Generate sample moves
+            const board = new CheckersGame();
+            let moveNum = 0;
+            
+            // Simulate 30 moves
+            for (let i = 0; i < 30; i++) {
+                const currentPlayer = i % 2 === 0 ? 'red' : 'black';
+                const boardState = {
+                    board: board.board.map(row => row.map(cell => cell ? {color: cell.color, isKing: cell.isKing} : null)),
+                    currentPlayer: currentPlayer,
+                    redPieces: 12 - Math.floor(i / 6),
+                    blackPieces: 12 - Math.floor(i / 5)
+                };
+                
+                const move = {
+                    from: { row: Math.floor(Math.random() * 8), col: Math.floor(Math.random() * 8) },
+                    to: { row: Math.floor(Math.random() * 8), col: Math.floor(Math.random() * 8) },
+                    player: currentPlayer,
+                    isJump: Math.random() > 0.7,
+                    efficiency: 50 + Math.floor(Math.random() * 50),
+                    timeTaken: 1000 + Math.floor(Math.random() * 3000),
+                    timestamp: i * 10000,
+                    pieceAdvantage: Math.floor(Math.random() * 5) - 2,
+                    moveNumber: i + 1,
+                    boardState: boardState
+                };
+                
+                sampleGame.moves.push(move);
+            }
+            
+            gameData = sampleGame;
+            status.textContent = '✅ Loaded sample game for demonstration';
+            status.style.color = '#28a745';
+            initializePlayback();
+        }
+        
+        function loadFile(event) {
+            const file = event.target.files[0];
+            const status = document.getElementById('load-status');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        // Validate the data
+                        if (!data.moves || !Array.isArray(data.moves)) {
+                            throw new Error('Invalid game file: missing moves');
+                        }
+                        
+                        gameData = data;
+                        status.textContent = `✅ Loaded ${file.name} (${gameData.moves.length} moves)`;
+                        status.style.color = '#28a745';
+                        initializePlayback();
+                    } catch (err) {
+                        status.textContent = `❌ Invalid game file: ${err.message}`;
+                        status.style.color = '#dc3545';
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        function initializePlayback() {
+            if (!gameData || !gameData.moves || gameData.moves.length === 0) {
+                console.error('No valid game data');
+                return;
+            }
+            
+            // Hide no data message, show move info
+            document.getElementById('no-data').style.display = 'none';
+            document.getElementById('move-info-panel').style.display = 'block';
+            
+            // Enable controls
+            document.getElementById('controls-section').style.opacity = '1';
+            document.getElementById('controls-section').style.pointerEvents = 'auto';
+            
+            // Initialize game and renderer
+            const canvas = document.getElementById('playback-canvas');
+            canvas.style.display = 'block';
+            
+            replayGame = new CheckersGame();
+            replayRenderer = new Checkers3DRenderer(canvas, replayGame);
+            
+            // Set up UI
+            document.getElementById('total-moves').textContent = gameData.moves.length;
+            document.getElementById('total-time').textContent = formatTime(Math.floor((gameData.endTime - gameData.startTime) / 1000));
+            document.getElementById('game-duration').textContent = formatTime(Math.floor((gameData.endTime - gameData.startTime) / 1000));
+            document.getElementById('game-winner').textContent = gameData.winner || 'In Progress';
+            document.getElementById('game-moves').textContent = gameData.totalMoves || gameData.moves.length;
+            
+            // Display statistics
+            document.getElementById('red-captures').textContent = gameData.redCaptures || 0;
+            document.getElementById('black-captures').textContent = gameData.blackCaptures || 0;
+            
+            // Add key moments
+            displayKeyMoments();
+            
+            // Add timeline markers
+            addTimelineMarkers();
+            
+            // Go to first move
+            currentMoveIndex = 0;
+            updateDisplay();
+        }
+        
+        function displayKeyMoments() {
+            const container = document.getElementById('key-moments');
+            container.innerHTML = '';
+            
+            if (!gameData.keyMoments || gameData.keyMoments.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #999;">No key moments in this game</div>';
+                return;
+            }
+            
+            gameData.keyMoments.forEach((moment, index) => {
+                const item = document.createElement('div');
+                item.className = 'moment-item';
+                item.innerHTML = `
+                    <div><strong>Move ${moment.moveNumber}</strong></div>
+                    <div>${moment.description}</div>
+                `;
+                item.onclick = () => jumpToMove(moment.moveNumber - 1);
+                container.appendChild(item);
+            });
+        }
+        
+        function addTimelineMarkers() {
+            const markers = document.getElementById('timeline-markers');
+            markers.innerHTML = '';
+            
+            if (!gameData.keyMoments) return;
+            
+            gameData.keyMoments.forEach(moment => {
+                const marker = document.createElement('div');
+                marker.className = 'marker';
+                marker.style.left = `${((moment.moveNumber - 1) / gameData.moves.length) * 100}%`;
+                marker.title = moment.description;
+                markers.appendChild(marker);
+            });
+        }
+        
+        function updateDisplay() {
+            if (!gameData || !gameData.moves || currentMoveIndex >= gameData.moves.length) {
+                console.error('Invalid move index or no game data');
+                return;
+            }
+            
+            const move = gameData.moves[currentMoveIndex];
+            
+            // Restore board state
+            if (move.boardState) {
+                // Deep copy the board state
+                replayGame.board = move.boardState.board.map(row => 
+                    row.map(cell => cell ? {
+                        color: cell.color,
+                        isKing: cell.isKing,
+                        row: row.indexOf(cell),
+                        col: move.boardState.board.indexOf(row)
+                    } : null)
+                );
+                replayGame.currentPlayer = move.boardState.currentPlayer;
+                replayGame.redPieces = move.boardState.redPieces || 12;
+                replayGame.blackPieces = move.boardState.blackPieces || 12;
+                
+                // Force renderer update
+                replayRenderer.clearPieces();
+                replayRenderer.createPieces();
+                replayRenderer.updateBoard();
+            }
+            
+            // Update UI
+            document.getElementById('move-num').textContent = currentMoveIndex + 1;
+            document.getElementById('current-player').textContent = move.player || '-';
+            document.getElementById('move-notation').textContent = formatMove(move);
+            document.getElementById('move-efficiency').textContent = move.efficiency ? `${move.efficiency}%` : '-';
+            document.getElementById('move-time').textContent = move.timeTaken ? `${(move.timeTaken / 1000).toFixed(1)}s` : '-';
+            document.getElementById('current-time').textContent = formatTime(Math.floor((move.timestamp || 0) / 1000));
+            
+            // Update pieces count
+            document.getElementById('red-pieces').textContent = move.boardState?.redPieces || 12;
+            document.getElementById('black-pieces').textContent = move.boardState?.blackPieces || 12;
+            
+            // Update timeline
+            const progress = ((currentMoveIndex + 1) / gameData.moves.length) * 100;
+            document.getElementById('timeline-progress').style.width = `${progress}%`;
+            document.getElementById('timeline-handle').style.left = `${progress}%`;
+            
+            // Show analysis
+            showMoveAnalysis(move);
+        }
+        
+        function formatMove(move) {
+            if (!move.from || !move.to) return '-';
+            const fromCol = String.fromCharCode(65 + move.from.col);
+            const fromRow = 8 - move.from.row;
+            const toCol = String.fromCharCode(65 + move.to.col);
+            const toRow = 8 - move.to.row;
+            const jumpSymbol = move.isJump ? ' x ' : ' → ';
+            return `${fromCol}${fromRow}${jumpSymbol}${toCol}${toRow}`;
+        }
+        
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function showMoveAnalysis(move) {
+            const analysis = document.getElementById('analysis-text');
+            let text = [];
+            
+            if (move.isJump) {
+                text.push('• Captured opponent piece');
+            }
+            
+            if (move.efficiency >= 90) {
+                text.push('• Brilliant move! (90%+ efficiency)');
+            } else if (move.efficiency >= 70) {
+                text.push('• Good move (70%+ efficiency)');
+            } else if (move.efficiency >= 50) {
+                text.push('• Average move');
+            } else if (move.efficiency) {
+                text.push('• Could be improved');
+            }
+            
+            if (move.pieceAdvantage > 0) {
+                text.push(`• Red advantage: +${move.pieceAdvantage}`);
+            } else if (move.pieceAdvantage < 0) {
+                text.push(`• Black advantage: +${Math.abs(move.pieceAdvantage)}`);
+            } else if (move.pieceAdvantage === 0) {
+                text.push('• Equal position');
+            }
+            
+            analysis.innerHTML = text.join('<br>') || 'No analysis available';
+        }
+        
+        function goToStart() {
+            currentMoveIndex = 0;
+            updateDisplay();
+        }
+        
+        function previousMove() {
+            if (currentMoveIndex > 0) {
+                currentMoveIndex--;
+                updateDisplay();
+            }
+        }
+        
+        function nextMove() {
+            if (gameData && currentMoveIndex < gameData.moves.length - 1) {
+                currentMoveIndex++;
+                updateDisplay();
+            }
+        }
+        
+        function goToEnd() {
+            if (gameData && gameData.moves) {
+                currentMoveIndex = gameData.moves.length - 1;
+                updateDisplay();
+            }
+        }
+        
+        function jumpToMove(index) {
+            if (gameData && gameData.moves) {
+                currentMoveIndex = Math.max(0, Math.min(index, gameData.moves.length - 1));
+                updateDisplay();
+            }
+        }
+        
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        }
+        
+        function startPlayback() {
+            if (!gameData || !gameData.moves || gameData.moves.length === 0) return;
+            
+            isPlaying = true;
+            document.getElementById('btn-play').textContent = '⏸';
+            playbackInterval = setInterval(() => {
+                if (currentMoveIndex < gameData.moves.length - 1) {
+                    nextMove();
+                } else {
+                    stopPlayback();
+                }
+            }, 1000 / playbackSpeed);
+        }
+        
+        function stopPlayback() {
+            isPlaying = false;
+            document.getElementById('btn-play').textContent = '▶';
+            if (playbackInterval) {
+                clearInterval(playbackInterval);
+                playbackInterval = null;
+            }
+        }
+        
+        function exportGame() {
+            if (!gameData) {
+                alert('No game loaded to export');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(gameData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `checkers_replay_${Date.now()}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+    </script>
+</body>
+</html>

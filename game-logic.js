@@ -225,7 +225,14 @@ class CheckersGame {
                     const moves = this.getValidMoves(row, col);
                     const jumpMoves = moves.filter(move => move.isJump);
                     if (jumpMoves.length > 0) {
-                        jumps.push({ row, col, jumps: jumpMoves });
+                        // Return each jump in the format AI expects
+                        for (const jumpMove of jumpMoves) {
+                            jumps.push({
+                                from: { row, col },
+                                to: { row: jumpMove.row, col: jumpMove.col },
+                                isJump: true
+                            });
+                        }
                     }
                 }
             }
@@ -243,6 +250,21 @@ class CheckersGame {
         const fromRow = this.selectedPiece.row;
         const fromCol = this.selectedPiece.col;
         const piece = this.board[fromRow][fromCol];
+        
+        // Store complete move information for undo
+        const moveRecord = {
+            from: { row: fromRow, col: fromCol },
+            to: { row: toRow, col: toCol },
+            player: this.currentPlayer,
+            isJump: move.isJump,
+            turnNumber: Math.floor(this.moveHistory.length / 2) + 1,
+            wasKing: piece.isKing,
+            becameKing: false,
+            capturedPiece: null,
+            capturedPosition: null,
+            multiJumpContinued: false,
+            boardStateBefore: this.getBoardState()
+        };
 
         this.board[toRow][toCol] = piece;
         this.board[fromRow][fromCol] = null;
@@ -252,6 +274,11 @@ class CheckersGame {
         this.lastMovedPiece = piece;
 
         if (move.isJump) {
+            // Store captured piece info
+            const capturedPiece = this.board[move.capturedRow][move.capturedCol];
+            moveRecord.capturedPiece = capturedPiece ? {...capturedPiece} : null;
+            moveRecord.capturedPosition = { row: move.capturedRow, col: move.capturedCol };
+            
             this.board[move.capturedRow][move.capturedCol] = null;
             
             if (this.currentPlayer === 'red') {
@@ -265,22 +292,20 @@ class CheckersGame {
                 this.multiJumpMode = true;
                 this.selectedPiece = { row: toRow, col: toCol };
                 this.validMoves = additionalJumps;
+                moveRecord.multiJumpContinued = true;
+                this.moveHistory.push(moveRecord);
                 return true;
             }
         }
 
-        if ((piece.color === 'red' && toRow === 0) || 
-            (piece.color === 'black' && toRow === 7)) {
+        // Check for king promotion
+        if (!piece.isKing && ((piece.color === 'red' && toRow === 0) || 
+            (piece.color === 'black' && toRow === 7))) {
             piece.isKing = true;
+            moveRecord.becameKing = true;
         }
 
-        this.moveHistory.push({
-            from: { row: fromRow, col: fromCol },
-            to: { row: toRow, col: toCol },
-            player: this.currentPlayer,
-            isJump: move.isJump,
-            turnNumber: Math.floor(this.moveHistory.length / 2) + 1
-        });
+        this.moveHistory.push(moveRecord);
 
         this.multiJumpMode = false;
         this.lastMovedPiece = null;
@@ -298,26 +323,103 @@ class CheckersGame {
         this.mandatoryJumps = this.getAllJumpsForPlayer(this.currentPlayer);
     }
 
-    undoLastMove() {
+    undoLastMove(undoCount = 1) {
         if (this.moveHistory.length === 0) return false;
-
-        const lastMove = this.moveHistory.pop();
-        const piece = this.board[lastMove.to.row][lastMove.to.col];
         
-        this.board[lastMove.from.row][lastMove.from.col] = piece;
-        this.board[lastMove.to.row][lastMove.to.col] = null;
+        let undone = 0;
         
-        if (piece) {
-            piece.row = lastMove.from.row;
-            piece.col = lastMove.from.col;
+        for (let i = 0; i < undoCount && this.moveHistory.length > 0; i++) {
+            const lastMove = this.moveHistory.pop();
+            
+            // Move piece back to original position
+            const piece = this.board[lastMove.to.row][lastMove.to.col];
+            if (piece) {
+                this.board[lastMove.from.row][lastMove.from.col] = piece;
+                this.board[lastMove.to.row][lastMove.to.col] = null;
+                
+                piece.row = lastMove.from.row;
+                piece.col = lastMove.from.col;
+                
+                // Restore king status
+                if (lastMove.becameKing) {
+                    piece.isKing = false;
+                }
+            }
+            
+            // Restore captured piece
+            if (lastMove.capturedPiece && lastMove.capturedPosition) {
+                const restored = {
+                    ...lastMove.capturedPiece,
+                    row: lastMove.capturedPosition.row,
+                    col: lastMove.capturedPosition.col
+                };
+                this.board[restored.row][restored.col] = restored;
+                
+                // Update piece counts
+                if (restored.color === 'red') {
+                    this.redPieces++;
+                } else {
+                    this.blackPieces++;
+                }
+            }
+            
+            // Handle multi-jump continuation
+            if (lastMove.multiJumpContinued) {
+                // Continue undoing if this was part of a multi-jump
+                while (this.moveHistory.length > 0 && 
+                       this.moveHistory[this.moveHistory.length - 1].multiJumpContinued) {
+                    this.undoLastMove(1);
+                }
+            }
+            
+            this.currentPlayer = lastMove.player;
+            undone++;
         }
-
-        this.currentPlayer = lastMove.player;
+        
+        // Reset game state
         this.selectedPiece = null;
         this.validMoves = [];
+        this.multiJumpMode = false;
+        this.lastMovedPiece = null;
+        this.isGameOver = false;
+        this.winner = null;
         this.mandatoryJumps = this.getAllJumpsForPlayer(this.currentPlayer);
         
+        return undone > 0;
+    }
+    
+    // New method to support playback
+    goToMove(moveIndex) {
+        if (moveIndex < 0 || moveIndex > this.moveHistory.length) return false;
+        
+        // Store current position
+        const currentIndex = this.moveHistory.length;
+        
+        if (moveIndex < currentIndex) {
+            // Go backward - undo moves
+            const undoCount = currentIndex - moveIndex;
+            this.undoLastMove(undoCount);
+        } else if (moveIndex > currentIndex) {
+            // Go forward - replay moves (requires stored moves)
+            // This would need the full history to be stored separately
+            return false;
+        }
+        
         return true;
+    }
+    
+    // Get full game state for playback
+    getFullHistory() {
+        return {
+            moves: [...this.moveHistory],
+            currentIndex: this.moveHistory.length,
+            currentPlayer: this.currentPlayer,
+            board: this.board.map(row => row.map(cell => cell ? {...cell} : null)),
+            redPieces: this.redPieces,
+            blackPieces: this.blackPieces,
+            isGameOver: this.isGameOver,
+            winner: this.winner
+        };
     }
 
     isValidPosition(row, col) {

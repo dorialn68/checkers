@@ -26,9 +26,9 @@
                     <span id="game-mode" class="stat-value">PvP</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">Score:</span>
+                    <span class="stat-label">Captured:</span>
                     <span class="stat-value">
-                        <span id="red-score">12</span> - <span id="black-score">12</span>
+                        Red: <span id="red-score">0</span> | Black: <span id="black-score">0</span>
                     </span>
                 </div>
             </div>
@@ -145,7 +145,32 @@
                         <button id="undo-move" class="control-btn">Undo Move</button>
                         <button id="show-hint" class="control-btn hint-btn">Show Hint</button>
                         <button id="show-rules" class="control-btn">Rules</button>
+                        <button id="view-analytics" class="control-btn">📊 Analytics</button>
+                        <button id="enter-playback" class="control-btn">🎮 Playback</button>
                         <button id="online-play" class="control-btn online-btn">Play Online</button>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h3>Undo Settings</h3>
+                    <div style="padding: 10px;">
+                        <label style="display: block; margin-bottom: 10px;">
+                            <span>Max Undo Steps:</span>
+                            <select id="undo-limit" style="margin-left: 10px; padding: 5px;">
+                                <option value="1">1 move</option>
+                                <option value="2">2 moves</option>
+                                <option value="5" selected>5 moves</option>
+                                <option value="10">10 moves</option>
+                                <option value="-1">Unlimited</option>
+                            </select>
+                        </label>
+                        <label style="display: block; margin-bottom: 10px;">
+                            <input type="checkbox" id="undo-both-players" checked>
+                            <span>Undo both players (full turn)</span>
+                        </label>
+                        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                            History: <span id="move-count">0</span> moves
+                        </div>
                     </div>
                 </div>
                 
@@ -162,6 +187,36 @@
             <div class="game-board-container">
                 <canvas id="game-canvas"></canvas>
                 <div class="move-indicator" id="move-indicator"></div>
+                
+                <!-- Playback Controls -->
+                <div id="playback-controls-container" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.95); border-radius: 10px;">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <strong id="playback-move-counter">Move 0 / 0</strong>
+                        <span id="playback-move-info" style="margin-left: 20px; color: #666;"></span>
+                    </div>
+                    
+                    <div id="playback-timeline" class="timeline" style="height: 40px; background: #e0e0e0; border-radius: 20px; margin: 10px 0; cursor: pointer; position: relative;">
+                        <div class="timeline-progress" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 20px; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+                        <button class="control-btn" onclick="playbackController.goToStart()">⏮</button>
+                        <button class="control-btn" onclick="playbackController.previousMove()">⏪</button>
+                        <button class="control-btn" id="playback-play-btn" onclick="playbackController.togglePlayback()">▶</button>
+                        <button class="control-btn" onclick="playbackController.nextMove()">⏩</button>
+                        <button class="control-btn" onclick="playbackController.goToEnd()">⏭</button>
+                        <button class="control-btn" onclick="playbackController.exitPlaybackMode()" style="background: #dc3545;">✖ Exit</button>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+                        <label>Speed:</label>
+                        <button class="control-btn" onclick="playbackController.setSpeed(0.5)" style="padding: 5px 10px;">0.5x</button>
+                        <button class="control-btn" onclick="playbackController.setSpeed(1)" style="padding: 5px 10px;">1x</button>
+                        <button class="control-btn" onclick="playbackController.setSpeed(2)" style="padding: 5px 10px;">2x</button>
+                        <button class="control-btn" onclick="playbackController.setSpeed(4)" style="padding: 5px 10px;">4x</button>
+                    </div>
+                </div>
+                
                 <div class="board-legend">
                     <div class="legend-text">Board Coordinates: A-H (columns) × 1-8 (rows)</div>
                     <div class="legend-text">Each black square shows its coordinate (e.g., A1, B2, C3)</div>
@@ -181,6 +236,9 @@
                         <input type="password" id="api-key" class="api-key-input" placeholder="API Key (if needed)" style="display: none;">
                         <div class="token-info">
                             <span>Est. cost: $<span id="token-cost">0.00</span></span>
+                        </div>
+                        <div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 5px; font-size: 11px; color: #856404; display: none;" id="api-key-warning">
+                            ⚠️ <strong>Security Notice:</strong> API keys are stored only in your browser's local storage and are never sent to any server except the AI provider's API. When playing on GitHub Pages, ensure you're using HTTPS. For maximum security, use environment variables or the built-in AI option.
                         </div>
                     </div>
                     <div class="chat-messages" id="chat-messages">
@@ -244,6 +302,10 @@
     <script src="ai-opponent.js"></script>
     <script src="3d-renderer.js"></script>
     <script src="llm-integration.js"></script>
+    <script src="move-validator.js"></script>
+    <script src="game-analytics.js"></script>
+    <script src="playback-controller.js"></script>
+    <script src="bug-capture.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

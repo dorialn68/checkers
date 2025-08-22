@@ -1,172 +1,215 @@
-# 3D Checkers Pro - AI-Powered Chess Game
+# 🎮 3D Checkers Pro - Advanced AI-Powered Game
 
-A professional 3D checkers game with AI opponent, move suggestions, and LLM-powered analysis. Built with Three.js for stunning 3D graphics and featuring multiple game modes.
+[![Live Demo](https://img.shields.io/badge/Play-Live%20Demo-green)](https://dorialn68.github.io/checkers/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/dorialn68/checkers)
 
-![3D Checkers Pro](https://img.shields.io/badge/Version-1.0.0-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Platform](https://img.shields.io/badge/Platform-Web-orange)
+A professional 3D checkers game with advanced AI, multiple play modes, and comprehensive learning features. Built with pure JavaScript and Three.js for an immersive gaming experience.
 
-## 🎮 Live Demo
+## 🎯 Play Now
 
-Play the game at: [https://dorialn68.github.io/checkers/](https://dorialn68.github.io/checkers/)
+**🎮 [Play the Game Live](https://dorialn68.github.io/checkers/)**
 
 ## ✨ Features
 
 ### Game Modes
-- **Person vs Person (PvP)**: Classic two-player mode
-- **Person vs Computer (PvC)**: Play against AI with 4 difficulty levels
-- **Agent Helper Mode**: Real-time AI suggestions highlight best moves
+- **🤖 Player vs Computer (PvC)** - Play against AI with 4 difficulty levels
+- **👥 Player vs Player (PvP)** - Local multiplayer on the same device
+- **💡 Agent Helper Mode** - Get real-time AI suggestions for best moves
 
-### 3D Graphics
-- Beautiful 3D board and pieces using Three.js
-- Multiple camera angles (Top, Side, 3D Perspective)
-- Auto-rotate feature for cinematic viewing
-- Smooth piece animations
-- Visual move indicators and hints
+### AI & Intelligence
+- **Minimax Algorithm** with alpha-beta pruning
+- **4 Difficulty Levels**: Easy, Medium, Hard, Expert
+- **Move Efficiency Scoring** - Each move rated 0-100%
+- **Built-in AI Assistant** - No API key required
+- **LLM Integration** - Support for OpenAI, Claude, and Groq APIs
+- **Smart Move Suggestions** - Top 3 moves with explanations
 
-### AI Features
-- **Smart AI Opponent**: Minimax algorithm with alpha-beta pruning
-- **Difficulty Levels**: Easy, Medium, Hard, Expert
-- **Move Suggestions**: Get hints for best moves
-- **LLM Integration**: Connect to various AI providers for advanced analysis
-  - Local AI (offline)
-  - OpenAI GPT-3.5
-  - Claude Haiku (Anthropic)
-  - Groq (Fast & Free)
+### 3D Graphics & Controls
+- **Full 3D Board** with realistic lighting and shadows
+- **Multiple Camera Angles**: Top, Side, Perspective, Auto-rotate
+- **Customizable Visuals**:
+  - Piece colors and shininess
+  - Board reflection
+  - Light brightness and saturation
+- **Smooth Animations** for piece movements
+- **Visual Feedback** for valid moves and mandatory jumps
 
-### User Experience
-- Intuitive mouse controls
-- Move history tracking
-- Undo functionality
-- Mandatory jump enforcement
-- King promotion animations
-- Real-time game status updates
+### Game Rules & Customization
+- **Toggleable Rules**:
+  - Backward Capture - Regular pieces can capture backwards
+  - Flying Kings - Kings move like chess bishops
+  - Mandatory Capture - Must jump when possible
+- **Player Color Selection** - Choose to play as Red or Black
+- **Multi-level Undo** - Undo up to 10 moves with piece restoration
+- **Move History** with algebraic notation
 
-## 🚀 Quick Start
+### Analytics & Learning
+- **Game Analytics Dashboard**:
+  - Move efficiency graphs
+  - Piece advantage timeline
+  - Time per move analysis
+  - Capture progression
+- **Key Moments Detection**:
+  - First blood
+  - King promotions
+  - Turning points
+  - Brilliant moves (90%+ efficiency)
+- **Integrated Playback System**:
+  - Review games move-by-move on main board
+  - Variable playback speed (0.5x-4x)
+  - Timeline navigation with golden progress bar
+  - Beautiful gradient controls
+- **Auto-save** - Last 10 games saved automatically
+
+### Debug & Development Tools
+- **Advanced Bug Capture**:
+  - Click-and-drag screenshot tool
+  - Automatic issue detection
+  - Logical error identification
+  - JSON export for debugging
+- **Move Validator**:
+  - Detects AI stuck states only
+  - Auto-fixes AI bugs
+  - Doesn't interrupt human thinking time
+- **Board State Analysis** - Export complete game state with issue detection
+
+## 🚀 Getting Started
 
 ### Play Online
-1. Visit the [live demo](https://dorialn68.github.io/checkers/)
-2. Select your game mode
-3. Start playing!
+Visit: [https://dorialn68.github.io/checkers/](https://dorialn68.github.io/checkers/)
 
 ### Run Locally
-1. Clone the repository:
 ```bash
 git clone https://github.com/dorialn68/checkers.git
 cd checkers
+# Open index.html in your browser (no server required)
 ```
 
-2. Open `index.html` in a modern web browser
-   - Or use a local server: `python -m http.server 8000`
-   - Navigate to `http://localhost:8000`
+### Deploy Your Own
+1. Fork this repository
+2. Enable GitHub Pages in Settings → Pages
+3. Select "Deploy from branch" (main)
+4. Your game will be at: `https://[username].github.io/checkers/`
 
-## 🎯 How to Play
+## 🎮 How to Play
 
-### Basic Rules
-- **Movement**: Pieces move diagonally forward one square
-- **Capturing**: Jump over opponent pieces (mandatory when possible)
-- **Kings**: Pieces become kings at the opposite end, can move backward
-- **Winning**: Capture all opponent pieces or block all moves
+### Basic Controls
+- **Click** a piece to select it
+- **Click** a highlighted square to move
+- **Mouse Drag** to rotate the 3D board
+- **Scroll** to zoom in/out
 
-### Controls
-- Click a piece to select it
-- Click a highlighted square to move
-- Drag to rotate the 3D board
-- Scroll to zoom in/out
+### Board Coordinates
+- Columns: A-H (left to right)
+- Rows: 1-8 (bottom to top from Red's perspective)
+- Move notation: "B6 → C5" (with → for moves, x for captures)
 
-## 🤖 AI Integration
+### Special Features
+- **Playback Mode**: Click "🎮 Playback" to review your game
+- **Bug Capture**: Click "📷 Capture Bug" then drag to select problem area
+- **Analytics**: Click "📊 Analytics" for detailed game statistics
 
-### Using the AI Assistant
-1. Select an AI provider from the dropdown
-2. Enter API key if required (not needed for local AI or Groq)
-3. Click "Analyze Board" for move suggestions
-4. Chat with the AI for strategic advice
+## 🔐 Security & Privacy
 
 ### API Keys
-- **OpenAI**: Get from [platform.openai.com](https://platform.openai.com)
-- **Anthropic**: Get from [console.anthropic.com](https://console.anthropic.com)
-- **Groq**: Get free key from [console.groq.com](https://console.groq.com)
+**⚠️ Security Notice**: 
+- API keys are stored **only in your browser's local storage**
+- Keys are **never sent to any server** except the AI provider's API
+- GitHub Pages uses **HTTPS by default** for secure transmission
+- For maximum security, use the **built-in AI** (no API needed)
 
-### Cost Estimates
-- Local AI: Free
-- Groq: Free
-- OpenAI GPT-3.5: ~$0.001 per analysis
-- Claude Haiku: ~$0.0005 per analysis
+### Data Storage
+- All game data is stored locally in your browser
+- No personal data is collected or transmitted
+- Analytics are computed client-side only
+- Auto-saved games remain on your device
 
-## 📱 Deployment
+## 📈 Latest Updates (Version 2.0)
 
-### GitHub Pages
-1. Fork this repository
-2. Enable GitHub Pages in Settings > Pages
-3. Select source: Deploy from branch (main)
-4. Your game will be live at `https://dorialn68.github.io/checkers/`
+### Major Features Added
+- ✅ **Integrated Playback** - Review games directly on main board
+- ✅ **Enhanced Undo System** - Multi-level undo with captured piece restoration
+- ✅ **Advanced Bug Capture** - Area selection tool with automatic issue detection
+- ✅ **Game Analytics** - Comprehensive statistics and performance graphs
+- ✅ **Auto-save System** - Automatic game saving to browser storage
+- ✅ **Customizable Rules** - Toggle backward capture, flying kings, mandatory jumps
+- ✅ **Visual Customization** - Adjust piece colors, shininess, board reflection
 
-### Custom Domain
-1. Add a `CNAME` file with your domain
-2. Configure DNS settings with your provider
-3. Enable HTTPS in GitHub Pages settings
+### Bug Fixes
+- ✅ Fixed mandatory jump enforcement
+- ✅ Fixed AI role flipping issue
+- ✅ Fixed scoring display (now shows captures)
+- ✅ Fixed move validator alerts for human players
+- ✅ Fixed AI stuck states with auto-recovery
+- ✅ Fixed multi-jump sequences
+- ✅ Fixed king promotion tracking
 
-## 🛠️ Technology Stack
+## 🛠️ Technical Stack
 
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **Frontend**: Pure JavaScript (ES6+)
 - **3D Graphics**: Three.js
-- **AI Engine**: Custom minimax with alpha-beta pruning
-- **LLM Integration**: OpenAI, Anthropic, Groq APIs
+- **AI Engine**: Custom minimax implementation
+- **Styling**: Custom CSS with responsive design
 - **Deployment**: GitHub Pages
+- **No Backend Required**: Fully client-side application
 
-## 📊 Performance
+## 📝 License
 
-- Instant local AI analysis
-- Sub-second move calculations
-- 60 FPS 3D rendering
-- Responsive design for all devices
-- Optimized for modern browsers
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file.
+
+**You are FREE to:**
+- ✅ Use commercially
+- ✅ Modify and customize
+- ✅ Distribute
+- ✅ Use privately
+- **No limitations or commercial restrictions apply**
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the project
+Contributions are welcome! 
+1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 License
+## 📧 Support
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+For issues or questions:
+- Open an issue on [GitHub](https://github.com/dorialn68/checkers/issues)
+- Check existing issues for solutions
 
-## 🏆 Share on LinkedIn
+## 🎯 Roadmap
 
-Love the game? Share it with your network!
+- [ ] Online multiplayer via WebRTC
+- [ ] Tournament mode
+- [ ] More board themes
+- [ ] Mobile app versions
+- [ ] Opening book database
+- [ ] Endgame tablebase
+- [ ] Voice commands
+- [ ] Twitch integration
+
+## 💬 Share on LinkedIn
 
 ```
-🎮 Check out this amazing 3D Checkers game I've been playing!
+🎮 Check out this amazing 3D Checkers game with AI!
 
 Features:
-✅ Stunning 3D graphics
-✅ AI opponent with multiple difficulties  
-✅ LLM-powered move analysis
-✅ Multiple game modes
-✅ Free to play online
+✅ Stunning 3D graphics with Three.js
+✅ AI opponent with 4 difficulty levels
+✅ Game analytics & playback system
+✅ Integrated bug capture tools
+✅ 100% free & open source (MIT License)
 
-Try it here: https://dorialn68.github.io/checkers/
+Play now: https://dorialn68.github.io/checkers/
 
-#GameDev #AI #WebDevelopment #Checkers #ThreeJS
+#GameDev #AI #WebDevelopment #Checkers #ThreeJS #OpenSource
 ```
-
-## 👨‍💻 Author
-
-Created with passion for the classic game of checkers and modern web technologies.
-
-## 🙏 Acknowledgments
-
-- Three.js team for the amazing 3D library
-- Chess programming wiki for AI algorithms
-- The checkers community for rules and strategies
 
 ---
 
-**Play Now**: [https://dorialn68.github.io/checkers/](https://dorialn68.github.io/checkers/)
+**Enjoy the game!** 🎮 If you like this project, please give it a ⭐ on [GitHub](https://github.com/dorialn68/checkers)!
 
 Made with ❤️ using HTML5, Three.js, and AI

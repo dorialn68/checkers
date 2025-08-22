@@ -69,20 +69,22 @@ class CheckersAI {
                     let bestJump = null;
                     let bestScore = -Infinity;
                     
-                    for (const jumpSet of jumps) {
-                        for (const jump of jumpSet.jumps) {
-                            const gameCopy = this.cloneGame(game);
-                            // jumpSet has {row, col, jumps} structure
-                            gameCopy.selectedPiece = { row: jumpSet.row, col: jumpSet.col };
-                            gameCopy.validMoves = jumpSet.jumps;
-                            gameCopy.makeMove(jump.row, jump.col);
-                            
+                    for (const jump of jumps) {
+                        const gameCopy = this.cloneGame(game);
+                        // Select the piece that can jump
+                        gameCopy.selectedPiece = { row: jump.from.row, col: jump.from.col };
+                        
+                        // Get valid moves for this piece
+                        gameCopy.validMoves = gameCopy.getValidMoves(jump.from.row, jump.from.col);
+                        
+                        // Make the jump move
+                        if (gameCopy.makeMove(jump.to.row, jump.to.col)) {
                             const score = this.evaluatePosition(gameCopy, player);
                             if (score > bestScore) {
                                 bestScore = score;
                                 bestJump = {
-                                    from: { row: jumpSet.row, col: jumpSet.col },
-                                    to: { row: jump.row, col: jump.col }
+                                    from: { row: jump.from.row, col: jump.from.col },
+                                    to: { row: jump.to.row, col: jump.to.col }
                                 };
                             }
                         }
@@ -122,59 +124,77 @@ class CheckersAI {
             };
         }
 
-        const possibleMoves = game.getAllPossibleMovesForPlayer(currentPlayer);
+        const possibleMoveSets = game.getAllPossibleMovesForPlayer(currentPlayer);
         
-        if (possibleMoves.length === 0) {
+        if (possibleMoveSets.length === 0) {
             return {
                 score: currentPlayer === maximizingPlayer ? -10000 : 10000,
                 move: null
             };
         }
+        
+        // Flatten the move structure to get all possible moves
+        const possibleMoves = [];
+        for (const moveSet of possibleMoveSets) {
+            for (const move of moveSet.moves) {
+                possibleMoves.push({
+                    from: moveSet.from,
+                    to: { row: move.row, col: move.col },
+                    isJump: move.isJump
+                });
+            }
+        }
 
         let bestMove = null;
         let bestScore = currentPlayer === maximizingPlayer ? -Infinity : Infinity;
 
-        for (const moveSet of possibleMoves) {
-            for (const move of moveSet.moves) {
-                const gameCopy = this.cloneGame(game);
-                
-                gameCopy.selectedPiece = moveSet.from;
-                gameCopy.validMoves = moveSet.moves;
-                gameCopy.makeMove(move.row, move.col);
-                
-                const nextPlayer = gameCopy.currentPlayer;
-                const result = this.minimaxRecursive(
-                    gameCopy, 
-                    depth - 1, 
-                    alpha, 
-                    beta, 
-                    maximizingPlayer, 
-                    nextPlayer
-                );
+        for (const move of possibleMoves) {
+            const gameCopy = this.cloneGame(game);
+            
+            // Select the piece
+            gameCopy.selectedPiece = { row: move.from.row, col: move.from.col };
+            gameCopy.validMoves = gameCopy.getValidMoves(move.from.row, move.from.col);
+            
+            // Make the move
+            const moveSuccess = gameCopy.makeMove(move.to.row, move.to.col);
+            
+            if (!moveSuccess) {
+                console.error('Invalid move in minimax:', move);
+                continue;
+            }
+            
+            const nextPlayer = gameCopy.currentPlayer;
+            const result = this.minimaxRecursive(
+                gameCopy, 
+                depth - 1, 
+                alpha, 
+                beta, 
+                maximizingPlayer, 
+                nextPlayer
+            );
 
-                if (currentPlayer === maximizingPlayer) {
-                    if (result.score > bestScore) {
-                        bestScore = result.score;
-                        bestMove = {
-                            from: moveSet.from,
-                            to: { row: move.row, col: move.col }
-                        };
-                    }
-                    alpha = Math.max(alpha, bestScore);
-                } else {
-                    if (result.score < bestScore) {
-                        bestScore = result.score;
-                        bestMove = {
-                            from: moveSet.from,
-                            to: { row: move.row, col: move.col }
-                        };
-                    }
-                    beta = Math.min(beta, bestScore);
+            if (currentPlayer === maximizingPlayer) {
+                if (result.score > bestScore) {
+                    bestScore = result.score;
+                    bestMove = {
+                        from: { row: move.from.row, col: move.from.col },
+                        to: { row: move.to.row, col: move.to.col }
+                    };
                 }
+                alpha = Math.max(alpha, bestScore);
+            } else {
+                if (result.score < bestScore) {
+                    bestScore = result.score;
+                    bestMove = {
+                        from: { row: move.from.row, col: move.from.col },
+                        to: { row: move.to.row, col: move.to.col }
+                    };
+                }
+                beta = Math.min(beta, bestScore);
+            }
 
-                if (beta <= alpha) {
-                    break;
-                }
+            if (beta <= alpha) {
+                break;
             }
         }
 

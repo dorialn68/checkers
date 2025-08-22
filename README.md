@@ -40,8 +40,15 @@ A professional 3D checkers game with advanced AI, multiple play modes, and compr
   - Backward Capture - Regular pieces can capture backwards
   - Flying Kings - Kings move like chess bishops
   - Mandatory Capture - Must jump when possible
-- **Player Color Selection** - Choose to play as Red or Black
-- **Multi-level Undo** - Undo up to 10 moves with piece restoration
+- **Player Options**:
+  - Choose your color (Red or Black)
+  - Choose who moves first (independent of color)
+  - Auto-adjusting camera perspective based on player side
+- **Smart Undo System**:
+  - Configurable undo limit (1-10 moves or unlimited)
+  - Batched undo - click multiple times within 2 seconds
+  - Game-wide undo tracking with remaining count display
+  - Proper turn order restoration
 - **Move History** with algebraic notation
 
 ### Analytics & Learning
@@ -125,9 +132,16 @@ cd checkers
 - Analytics are computed client-side only
 - Auto-saved games remain on your device
 
-## 📈 Latest Updates (Version 2.0)
+## 📈 Latest Updates (Version 2.1)
 
-### Major Features Added
+### New Features (Latest)
+- ✅ **Smart Undo System** - Batched undo with 2-second wait, game-wide limit tracking
+- ✅ **First Move Selection** - Choose who goes first independent of color
+- ✅ **Auto Camera Adjustment** - Camera automatically adjusts when playing as Black
+- ✅ **Improved Move Reminders** - Gentle reminders for human players after 10 seconds
+- ✅ **Better Debug Experience** - Removed annoying popup bugs, manual capture only
+
+### Major Features (v2.0)
 - ✅ **Integrated Playback** - Review games directly on main board
 - ✅ **Enhanced Undo System** - Multi-level undo with captured piece restoration
 - ✅ **Advanced Bug Capture** - Area selection tool with automatic issue detection
@@ -137,10 +151,12 @@ cd checkers
 - ✅ **Visual Customization** - Adjust piece colors, shininess, board reflection
 
 ### Bug Fixes
+- ✅ Fixed undo functionality with proper limit enforcement
+- ✅ Fixed camera perspective when user plays as Black
+- ✅ Fixed move validator to not show popups during normal play
 - ✅ Fixed mandatory jump enforcement
 - ✅ Fixed AI role flipping issue
 - ✅ Fixed scoring display (now shows captures)
-- ✅ Fixed move validator alerts for human players
 - ✅ Fixed AI stuck states with auto-recovery
 - ✅ Fixed multi-jump sequences
 - ✅ Fixed king promotion tracking

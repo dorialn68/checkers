@@ -38,6 +38,23 @@ class GameAnalytics {
         this.gameData.currentJumpChain = 0;
     }
     
+    recordUndo(undoCount) {
+        if (!this.recording) return;
+        
+        // Add undo event to timeline
+        this.gameData.events.push({
+            type: 'undo',
+            move: this.gameData.moves.length,
+            timestamp: Date.now() - this.gameStartTime,
+            description: `Undone ${undoCount} move(s)`
+        });
+        
+        // Remove the last moves from history
+        for (let i = 0; i < undoCount && this.gameData.moves.length > 0; i++) {
+            this.gameData.moves.pop();
+        }
+    }
+    
     recordMove(move, game, timeTaken) {
         if (!this.recording) return;
         

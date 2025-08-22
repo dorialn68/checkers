@@ -1,7 +1,8 @@
 class CheckersGame {
     constructor() {
         this.board = this.initializeBoard();
-        this.currentPlayer = 'red';
+        this.currentPlayer = 'red';  // Default starting player
+        this.startingPlayer = 'red'; // Can be customized
         this.selectedPiece = null;
         this.validMoves = [];
         this.mandatoryJumps = [];
@@ -577,7 +578,7 @@ class CheckersGame {
 
     newGame() {
         this.board = this.initializeBoard();
-        this.currentPlayer = 'red';
+        this.currentPlayer = this.startingPlayer; // Use configured starting player
         this.selectedPiece = null;
         this.validMoves = [];
         this.mandatoryJumps = [];
@@ -588,5 +589,17 @@ class CheckersGame {
         this.winner = null;
         this.multiJumpMode = false;
         this.lastMovedPiece = null;
+        
+        // Set initial mandatory jumps for starting player
+        this.mandatoryJumps = this.getAllJumpsForPlayer(this.startingPlayer);
+    }
+    
+    setStartingPlayer(player) {
+        this.startingPlayer = player;
+        // If game hasn't started yet, update current player
+        if (this.moveHistory.length === 0) {
+            this.currentPlayer = player;
+            this.mandatoryJumps = this.getAllJumpsForPlayer(player);
+        }
     }
 }

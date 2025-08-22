@@ -553,6 +553,16 @@ class Checkers3DRenderer {
                 targetPos = new THREE.Vector3(15, 8, 0);
                 targetLookAt = new THREE.Vector3(0, 0, 0);
                 break;
+            case 'player-red':
+                // Red player sits at bottom (positive Z) - default view
+                targetPos = new THREE.Vector3(0, 12, 12);
+                targetLookAt = new THREE.Vector3(0, 0, 0);
+                break;
+            case 'player-black':
+                // Black player sits at top (negative Z) - flipped view
+                targetPos = new THREE.Vector3(0, 12, -12);
+                targetLookAt = new THREE.Vector3(0, 0, 0);
+                break;
             case 'perspective':
             default:
                 targetPos = new THREE.Vector3(0, 12, 12);

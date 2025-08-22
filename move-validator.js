@@ -8,6 +8,7 @@ class MoveValidator {
         this.validationInterval = null;
         this.gameInstance = null;
         this.isMonitoring = false;
+        this.lastReminderTime = 0; // Track when we last showed a PvP reminder
     }
     
     startMonitoring(game) {
@@ -32,7 +33,19 @@ class MoveValidator {
     
     onMoveMade() {
         this.lastMoveTime = Date.now();
+        this.lastReminderTime = 0; // Reset reminder timer when move is made
         this.moveCount++;
+        
+        // Hide any existing notifications
+        const notification = document.getElementById('move-validator-notification');
+        if (notification) {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
         
         if (this.gameInstance) {
             this.currentPlayer = this.gameInstance.currentPlayer;
@@ -102,12 +115,28 @@ class MoveValidator {
                 setTimeout(() => window.makeAIMove(), 100);
             }
         } else {
-            // Human's turn - just reset timer, don't show alerts
-            // Players can take their time thinking
-            this.lastMoveTime = Date.now(); // Reset timer to avoid repeated checks
-            
-            // Only log to console for debugging, no visual alerts
-            console.log(`Player ${currentPlayer} is thinking... ${availableMoves} moves available`);
+            // Human's turn - show gentle reminder after 10 seconds
+            if (timeSinceLastMove > 10000) {
+                const timeSinceLastReminder = Date.now() - this.lastReminderTime;
+                
+                // Show reminder every 10 seconds for any human player
+                if (timeSinceLastReminder > 10000) {
+                    const waitTime = Math.floor(timeSinceLastMove / 1000);
+                    
+                    if (window.currentMode === 'pvp') {
+                        // PvP mode - show waiting message
+                        const waitingPlayer = currentPlayer === 'red' ? 'Black' : 'Red';
+                        message = `⏱️ ${waitingPlayer} is waiting for ${currentPlayer}'s move (${waitTime}s)`;
+                    } else {
+                        // PvC mode - show thinking reminder for human
+                        message = `🤔 It's your turn, ${currentPlayer}! (${waitTime}s)`;
+                    }
+                    
+                    this.showNotification(message, 'info');
+                    console.log(`Reminder: ${message}`);
+                    this.lastReminderTime = Date.now();
+                }
+            }
             
             // Only show issue if there are truly no moves (game stuck)
             if (availableMoves === 0 && !game.isGameOver) {
@@ -153,24 +182,23 @@ class MoveValidator {
     }
     
     logIssue(type, message, details) {
-        console.error(`[VALIDATOR] ${type}: ${message}`, details);
+        // Only log to console, don't show popups unless it's a critical AI bug
+        console.log(`[VALIDATOR] ${type}: ${message}`, details);
         
-        // Show visual notification
-        this.showNotification(message, type === 'AI_BUG' ? 'error' : 'warning');
-        
-        // Log to debug panel
-        const debugInfo = document.getElementById('debug-info');
-        if (debugInfo) {
-            debugInfo.textContent = message;
-            debugInfo.style.display = 'block';
-            debugInfo.style.color = type === 'AI_BUG' ? '#ff4444' : '#ffaa00';
+        // Only show visual notification for AI bugs, not for normal gameplay
+        if (type === 'AI_BUG') {
+            // Only log to console, don't show popup
+            console.error('AI Bug detected:', message, details);
+            
+            // Log to debug panel if visible
+            const debugInfo = document.getElementById('debug-info');
+            if (debugInfo && debugInfo.style.display !== 'none') {
+                debugInfo.textContent = message;
+                debugInfo.style.color = '#ff4444';
+            }
         }
         
-        // Auto-capture screenshot for bugs
-        if (type === 'AI_BUG' && window.captureScreenshot) {
-            console.log('Auto-capturing screenshot for bug report...');
-            window.captureScreenshot();
-        }
+        // Never auto-capture screenshots - let user decide
     }
     
     showNotification(message, type = 'info') {

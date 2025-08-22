@@ -4,6 +4,9 @@ let ai = null;
 let llm = null;
 let gameAnalytics = null;
 let playbackController = null;
+let totalUndosThisGame = 0; // Track total undos performed in current game
+let pendingUndoCount = 0; // Track pending undo requests
+let undoTimeout = null; // Timeout for batching undo requests
 let currentMode = 'pvc';  // Default to PvC mode
 let aiDifficulty = 'medium';
 let isAIThinking = false;
@@ -50,10 +53,22 @@ function initializeGame() {
     
     renderer.onSquareClick = handleSquareClick;
     
+    // Set initial camera based on player side
+    const playerSideSelect = document.getElementById('player-side');
+    if (playerSideSelect && playerSideSelect.value === 'black') {
+        renderer.setCameraView('player-black');
+    }
+    
+    // Set initial first move preference
+    const firstMoveSelect = document.getElementById('first-move');
+    if (firstMoveSelect) {
+        game.setStartingPlayer(firstMoveSelect.value);
+    }
+    
     updateUI();
     
-    // If in PvC mode and computer plays red (goes first), trigger AI move
-    if (currentMode === 'pvc' && computerSide === 'red') {
+    // Check if computer should make the first move
+    if (currentMode === 'pvc' && game.currentPlayer === computerSide) {
         setTimeout(() => makeAIMove(), 1000);
     }
 }
@@ -93,10 +108,38 @@ function setupEventListeners() {
     document.getElementById('player-side').addEventListener('change', (e) => {
         playerSide = e.target.value;
         computerSide = (playerSide === 'red') ? 'black' : 'red';
+        window.computerSide = computerSide; // Update global reference
+        
+        // Adjust camera perspective based on player side
+        if (playerSide === 'black') {
+            // Black player should see board from their perspective (top)
+            renderer.setCameraView('player-black');
+        } else {
+            // Red player sees board from default perspective (bottom)
+            renderer.setCameraView('player-red');
+        }
         
         // Restart game to apply new sides
         if (currentMode === 'pvc') {
             startNewGame();
+        }
+    });
+    
+    // First move selection
+    document.getElementById('first-move').addEventListener('change', (e) => {
+        const firstMove = e.target.value;
+        game.setStartingPlayer(firstMove);
+        
+        // If game hasn't started, just update the setting
+        // If game is in progress, restart to apply
+        if (game.moveHistory.length > 0) {
+            const confirm = window.confirm('This will restart the game. Continue?');
+            if (confirm) {
+                startNewGame();
+            } else {
+                // Revert the selection
+                e.target.value = game.currentPlayer === 'red' ? 'red' : 'black';
+            }
         }
     });
     
@@ -244,6 +287,15 @@ function hideLoadingScreen() {
 function changeGameMode(mode) {
     currentMode = mode;
     game.gameMode = mode;
+    window.currentMode = mode; // Update global reference
+    
+    // Reset undo tracking when switching modes
+    totalUndosThisGame = 0;
+    pendingUndoCount = 0;
+    if (undoTimeout) {
+        clearTimeout(undoTimeout);
+        undoTimeout = null;
+    }
     
     document.querySelectorAll('.mode-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -462,7 +514,14 @@ function showHint() {
 }
 
 function startNewGame() {
+    // Get the first move setting
+    const firstMoveSelect = document.getElementById('first-move');
+    if (firstMoveSelect) {
+        game.setStartingPlayer(firstMoveSelect.value);
+    }
+    
     game.newGame();
+    totalUndosThisGame = 0; // Reset undo counter for new game
     renderer.updateBoard();
     updateUI();
     clearMoveHistory();
@@ -471,8 +530,8 @@ function startNewGame() {
         showAgentSuggestions();
     }
     
-    // If computer plays red (goes first) in PvC mode, make AI move
-    if (currentMode === 'pvc' && computerSide === 'red') {
+    // Check if computer should make the first move
+    if (currentMode === 'pvc' && game.currentPlayer === computerSide) {
         setTimeout(() => makeAIMove(), 1000);
     }
 }
@@ -489,41 +548,139 @@ function undoMove() {
     const undoLimit = parseInt(document.getElementById('undo-limit').value);
     const undoBothPlayers = document.getElementById('undo-both-players').checked;
     
-    // Calculate how many moves to undo
-    let undoCount = 1;
-    if (undoBothPlayers && currentMode === 'pvc') {
-        // Undo both player and computer moves
-        undoCount = 2;
-    }
-    
-    // Check if we can undo
-    if (undoLimit !== -1 && game.moveHistory.length > undoLimit * 2) {
-        showMoveIndicator(`Can only undo last ${undoLimit} turn(s)`);
+    // Check if we have moves to undo
+    if (game.moveHistory.length === 0) {
+        showMoveIndicator('No moves to undo');
         setTimeout(() => hideMoveIndicator(), 2000);
         return;
     }
     
-    const undone = game.undoLastMove(undoCount);
+    // Check if we've exceeded undo limit for entire game
+    if (undoLimit !== -1 && totalUndosThisGame >= undoLimit) {
+        showMoveIndicator(`❌ Undo limit reached! Used all ${undoLimit} undo(s) for this game`);
+        setTimeout(() => hideMoveIndicator(), 3000);
+        return;
+    }
+    
+    // Calculate how many moves this click represents
+    let clickUndoCount = 1;
+    if (undoBothPlayers && currentMode === 'pvc') {
+        clickUndoCount = 2; // Undo both player and computer moves
+    }
+    
+    // Add to pending undo count
+    pendingUndoCount += clickUndoCount;
+    
+    // Show that we're waiting for more undo clicks
+    showMoveIndicator(`⏳ Preparing to undo ${pendingUndoCount} move(s)... (click again to undo more)`);
+    
+    // Clear existing timeout
+    if (undoTimeout) {
+        clearTimeout(undoTimeout);
+    }
+    
+    // Set new timeout to process undos after 2 seconds of no clicks
+    undoTimeout = setTimeout(() => {
+        processUndoQueue();
+    }, 2000);
+}
+
+function processUndoQueue() {
+    const undoLimit = parseInt(document.getElementById('undo-limit').value);
+    const undoBothPlayers = document.getElementById('undo-both-players').checked;
+    
+    // Calculate actual undos to perform
+    let actualUndoCount = pendingUndoCount;
+    const movesAvailable = game.moveHistory.length;
+    
+    // Limit to available moves
+    if (actualUndoCount > movesAvailable) {
+        actualUndoCount = movesAvailable;
+    }
+    
+    // Check against remaining undo limit
+    if (undoLimit !== -1) {
+        const turnsToUndo = undoBothPlayers ? actualUndoCount / 2 : actualUndoCount;
+        const remainingUndos = undoLimit - totalUndosThisGame;
+        
+        if (turnsToUndo > remainingUndos) {
+            // Adjust to only use remaining undos
+            actualUndoCount = undoBothPlayers ? remainingUndos * 2 : remainingUndos;
+            showMoveIndicator(`⚠️ Limited to ${remainingUndos} remaining undo(s)`);
+            setTimeout(() => hideMoveIndicator(), 2000);
+        }
+    }
+    
+    // Remember whose turn it was before undo
+    const turnBeforeUndo = game.currentPlayer;
+    
+    // Perform the undo
+    const undone = game.undoLastMove(actualUndoCount);
+    
     if (undone) {
+        // Track undos (convert to turns)
+        const turnsUndone = undoBothPlayers ? Math.ceil(undone / 2) : undone;
+        totalUndosThisGame += turnsUndone;
+        
+        // Update display
         renderer.updateBoard();
         updateUI();
         updateMoveCount();
-        removeLastMoveFromHistory();
-        showMoveIndicator(`Undone ${undone} move(s)`);
+        
+        // Remove appropriate number of moves from history display
+        for (let i = 0; i < undone; i++) {
+            removeLastMoveFromHistory();
+        }
+        
+        // Verify correct player turn
+        const expectedPlayer = calculateExpectedPlayer(turnBeforeUndo, undone);
+        if (game.currentPlayer !== expectedPlayer) {
+            console.warn(`Turn mismatch after undo: expected ${expectedPlayer}, got ${game.currentPlayer}`);
+        }
+        
+        // Show comprehensive status
+        let statusMsg = `✅ Undone ${undone} move(s)`;
+        if (undoLimit !== -1) {
+            const remaining = undoLimit - totalUndosThisGame;
+            if (remaining > 0) {
+                statusMsg += ` | ${remaining} undo(s) remaining for this game`;
+            } else {
+                statusMsg += ` | ❌ No undos remaining`;
+            }
+        }
+        statusMsg += ` | ${game.currentPlayer}'s turn`;
+        
+        showMoveIndicator(statusMsg);
         
         // Update analytics
         if (gameAnalytics) {
+            gameAnalytics.recordUndo(undone);
             moveStartTime = Date.now();
         }
         
+        // Show AI suggestions if in helper mode
         if (helperMode) {
             showAgentSuggestions();
         }
         
-        setTimeout(() => hideMoveIndicator(), 2000);
+        setTimeout(() => hideMoveIndicator(), 4000);
     } else {
-        showMoveIndicator('No moves to undo');
+        showMoveIndicator('Failed to undo moves');
         setTimeout(() => hideMoveIndicator(), 2000);
+    }
+    
+    // Reset pending count
+    pendingUndoCount = 0;
+    undoTimeout = null;
+}
+
+function calculateExpectedPlayer(turnBefore, movesUndone) {
+    // If we undo an odd number of moves, the turn switches
+    // If we undo an even number of moves, the turn stays the same
+    if (movesUndone % 2 === 0) {
+        return turnBefore;
+    } else {
+        return turnBefore === 'red' ? 'black' : 'red';
     }
 }
 
@@ -547,7 +704,25 @@ function enterPlaybackMode() {
 function updateMoveCount() {
     const counter = document.getElementById('move-count');
     if (counter) {
-        counter.textContent = game.moveHistory.length;
+        const undoLimit = parseInt(document.getElementById('undo-limit').value);
+        let text = `${game.moveHistory.length}`;
+        
+        // Show undo usage if limited
+        if (undoLimit !== -1) {
+            const remaining = undoLimit - totalUndosThisGame;
+            text += ` (${remaining}/${undoLimit} undos left)`;
+            if (remaining === 0) {
+                counter.style.color = '#ff4444';
+            } else if (remaining <= 2) {
+                counter.style.color = '#ffaa00';
+            } else {
+                counter.style.color = '#666';
+            }
+        } else {
+            counter.style.color = '#666';
+        }
+        
+        counter.textContent = text;
     }
 }
 

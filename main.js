@@ -374,6 +374,10 @@ function changeAIDifficulty(level) {
 }
 
 function handleSquareClick(row, col) {
+    // Vibrate on mobile for feedback
+    if (window.mobileSupport && window.mobileSupport.isMobile) {
+        window.mobileSupport.vibrate([20]);
+    }
     if (game.isGameOver) return;
     
     // Prevent clicking during AI's turn
@@ -1321,4 +1325,5 @@ function addChatMessage(sender, message) {
     
     chatDiv.appendChild(messageDiv);
     chatDiv.scrollTop = chatDiv.scrollHeight;
-}
+}// Expose functions for mobile support
+window.handleSquareClick = handleSquareClick;

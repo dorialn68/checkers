@@ -490,20 +490,29 @@ class Checkers3DRenderer {
     }
 
     onMouseClick(event) {
-        if (this.game.isGameOver) return;
-        
-        // Don't block clicks entirely - let the game logic decide
+        if (this.game.isGameOver) {
+            return;
+        }
 
         const rect = this.canvas.getBoundingClientRect();
         this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+        
+        // Get all objects to check, including children of the board group
+        const objectsToCheck = [];
+        this.scene.traverse((child) => {
+            if (child.isMesh) {
+                objectsToCheck.push(child);
+            }
+        });
+        
+        const intersects = this.raycaster.intersectObjects(objectsToCheck, false);
 
         for (const intersect of intersects) {
             const object = intersect.object;
-            if (object.userData.isSquare) {
+            if (object.userData && object.userData.isSquare) {
                 const { row, col } = object.userData;
                 if (this.onSquareClick) {
                     this.onSquareClick(row, col);
@@ -519,12 +528,21 @@ class Checkers3DRenderer {
         this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+        
+        // Get all objects to check, including children of the board group
+        const objectsToCheck = [];
+        this.scene.traverse((child) => {
+            if (child.isMesh) {
+                objectsToCheck.push(child);
+            }
+        });
+        
+        const intersects = this.raycaster.intersectObjects(objectsToCheck, false);
 
         this.canvas.style.cursor = 'default';
         for (const intersect of intersects) {
             const object = intersect.object;
-            if (object.userData.isSquare || object.userData.piece) {
+            if (object.userData && (object.userData.isSquare || object.userData.piece)) {
                 this.canvas.style.cursor = 'pointer';
                 break;
             }

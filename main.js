@@ -39,6 +39,7 @@ function initializeGame() {
     
     game = new CheckersGame();
     renderer = new Checkers3DRenderer(canvas, game);
+    window.renderer3D = renderer; // Make globally accessible for mobile support
     ai = new CheckersAI(aiDifficulty);
     llm = new LLMIntegration();
     gameAnalytics = new GameAnalytics();

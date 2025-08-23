@@ -307,12 +307,8 @@ class MobileSupport {
             this.handleTouchEnd(e);
         }, { passive: false });
 
-        // Also handle tap events
-        canvas.addEventListener('click', (e) => {
-            if (this.isMobile) {
-                this.handleTap(e);
-            }
-        });
+        // Don't add another click handler on mobile - let the 3D renderer handle it
+        // The touch events will dispatch click events to the canvas
     }
 
     handleTouchStart(event) {
@@ -361,37 +357,23 @@ class MobileSupport {
     }
 
     handleBoardTap(x, y) {
-        // Convert screen coordinates to board position
-        if (!window.renderer3D) return;
-        
+        // Simply trigger a click event on the canvas
+        // This will use the existing 3D renderer's click handling
         const canvas = document.getElementById('game-canvas');
-        const rect = canvas.getBoundingClientRect();
+        if (!canvas) return;
         
-        // Normalize coordinates
-        const mouse = {
-            x: ((x - rect.left) / rect.width) * 2 - 1,
-            y: -((y - rect.top) / rect.height) * 2 + 1
-        };
+        // Create and dispatch a click event
+        const clickEvent = new MouseEvent('click', {
+            clientX: x,
+            clientY: y,
+            bubbles: true,
+            cancelable: true,
+            view: window
+        });
         
-        // Raycast to find what was clicked
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, window.renderer3D.camera);
+        canvas.dispatchEvent(clickEvent);
         
-        const intersects = raycaster.intersectObjects(window.renderer3D.scene.children, true);
-        
-        if (intersects.length > 0) {
-            const object = intersects[0].object;
-            
-            // Check if it's a piece or a square
-            if (object.userData && object.userData.position) {
-                const pos = object.userData.position;
-                
-                // Trigger the game's click handler
-                if (window.handleSquareClick) {
-                    window.handleSquareClick(pos.row, pos.col);
-                }
-            }
-        }
+        console.log('Mobile tap dispatched to canvas at:', x, y);
     }
 
     adjustLayout() {

@@ -148,43 +148,39 @@ class Checkers3DRenderer {
                 square.userData = { row, col, isSquare: true };
                 boardGroup.add(square);
 
-                // Add coordinate labels for all squares (not just black)
-                const labelCanvas = document.createElement('canvas');
-                labelCanvas.width = 64;
-                labelCanvas.height = 64;
-                const ctx = labelCanvas.getContext('2d');
-                ctx.fillStyle = isBlack ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                // Show column letters on bottom row
-                if (row === 7) {
-                    ctx.fillText(String.fromCharCode(65 + col), 32, 50);
+                // Only add edge labels, not on every square
+                if (row === 7 || col === 0) {
+                    const labelCanvas = document.createElement('canvas');
+                    labelCanvas.width = 64;
+                    labelCanvas.height = 64;
+                    const ctx = labelCanvas.getContext('2d');
+                    ctx.fillStyle = isBlack ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    // Show column letters on bottom row
+                    if (row === 7) {
+                        ctx.fillText(String.fromCharCode(65 + col), 32, 50);
+                    }
+                    // Show row numbers on left column
+                    if (col === 0) {
+                        ctx.fillText(8 - row, 12, 32);
+                    }
+                    
+                    const labelTexture = new THREE.CanvasTexture(labelCanvas);
+                    const labelMaterial = new THREE.MeshBasicMaterial({
+                        map: labelTexture,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    const labelMesh = new THREE.Mesh(squareGeometry, labelMaterial);
+                    labelMesh.rotation.x = -Math.PI / 2;
+                    labelMesh.position.set(col - 3.5, 0.02, row - 3.5);
+                    // Make label mesh non-interactive
+                    labelMesh.userData = { isLabel: true };
+                    boardGroup.add(labelMesh);
                 }
-                // Show row numbers on left column
-                if (col === 0) {
-                    ctx.fillText(8 - row, 12, 32);
-                }
-                
-                // Add small coordinate in corner of each black square
-                if (isBlack) {
-                    ctx.font = '12px Arial';
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                    const coord = String.fromCharCode(65 + col) + (8 - row);
-                    ctx.fillText(coord, 50, 12);
-                }
-                
-                const labelTexture = new THREE.CanvasTexture(labelCanvas);
-                const labelMaterial = new THREE.MeshBasicMaterial({
-                    map: labelTexture,
-                    transparent: true,
-                    opacity: isBlack ? 0.7 : 0.5
-                });
-                const labelMesh = new THREE.Mesh(squareGeometry, labelMaterial);
-                labelMesh.rotation.x = -Math.PI / 2;
-                labelMesh.position.set(col - 3.5, 0.02, row - 3.5);
-                boardGroup.add(labelMesh);
             }
         }
 
@@ -510,8 +506,34 @@ class Checkers3DRenderer {
         
         const intersects = this.raycaster.intersectObjects(objectsToCheck, false);
 
+        // Sort intersects by distance to get the closest object
+        intersects.sort((a, b) => a.distance - b.distance);
+        
+        // First check if we clicked on a piece directly
         for (const intersect of intersects) {
             const object = intersect.object;
+            // Skip label meshes
+            if (object.userData && object.userData.isLabel) {
+                continue;
+            }
+            // Check if it's a piece
+            if (object.userData && object.userData.piece) {
+                const { row, col } = object.userData;
+                if (this.onSquareClick) {
+                    this.onSquareClick(row, col);
+                }
+                return;
+            }
+        }
+        
+        // If no piece was clicked, check for squares
+        for (const intersect of intersects) {
+            const object = intersect.object;
+            // Skip label meshes
+            if (object.userData && object.userData.isLabel) {
+                continue;
+            }
+            // Check for clickable squares
             if (object.userData && object.userData.isSquare) {
                 const { row, col } = object.userData;
                 if (this.onSquareClick) {
@@ -540,8 +562,15 @@ class Checkers3DRenderer {
         const intersects = this.raycaster.intersectObjects(objectsToCheck, false);
 
         this.canvas.style.cursor = 'default';
+        // Sort intersects by distance
+        intersects.sort((a, b) => a.distance - b.distance);
+        
         for (const intersect of intersects) {
             const object = intersect.object;
+            // Skip label meshes
+            if (object.userData && object.userData.isLabel) {
+                continue;
+            }
             if (object.userData && (object.userData.isSquare || object.userData.piece)) {
                 this.canvas.style.cursor = 'pointer';
                 break;

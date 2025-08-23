@@ -94,6 +94,8 @@ class MobileSupport {
                     width: 100% !important;
                     height: 100% !important;
                     touch-action: none;
+                    position: relative;
+                    z-index: 1;
                 }
 
                 .sidebar {

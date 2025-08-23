@@ -211,16 +211,29 @@ class GameAnalytics {
     }
     
     calculateGameStats() {
-        const duration = (this.gameData.endTime - this.gameData.startTime) / 1000; // in seconds
-        const avgTimePerMove = this.gameData.timePerMove.reduce((a, b) => a + b.value, 0) / this.gameData.timePerMove.length;
+        // Ensure valid timestamps and non-negative duration
+        const startTime = this.gameData.startTime || Date.now();
+        const endTime = this.gameData.endTime || Date.now();
+        const duration = Math.max(0, Math.floor((endTime - startTime) / 1000)); // in seconds, ensure non-negative
         
-        const redEfficiency = this.gameData.efficiency
-            .filter(e => e.player === 'red')
-            .reduce((a, b) => a + b.value, 0) / this.gameData.efficiency.filter(e => e.player === 'red').length;
+        const avgTimePerMove = this.gameData.timePerMove.length > 0 
+            ? this.gameData.timePerMove.reduce((a, b) => a + b.value, 0) / this.gameData.timePerMove.length
+            : 0;
+        
+        const redMoves = this.gameData.efficiency.filter(e => e.player === 'red');
+        const blackMoves = this.gameData.efficiency.filter(e => e.player === 'black');
+        
+        const redEfficiency = redMoves.length > 0
+            ? redMoves.reduce((a, b) => a + b.value, 0) / redMoves.length
+            : 0;
             
-        const blackEfficiency = this.gameData.efficiency
-            .filter(e => e.player === 'black')
-            .reduce((a, b) => a + b.value, 0) / this.gameData.efficiency.filter(e => e.player === 'black').length;
+        const blackEfficiency = blackMoves.length > 0
+            ? blackMoves.reduce((a, b) => a + b.value, 0) / blackMoves.length
+            : 0;
+        
+        // Count current pieces on board
+        let redPieces = 12 - this.gameData.blackCaptures;
+        let blackPieces = 12 - this.gameData.redCaptures;
         
         return {
             duration: Math.round(duration),
@@ -230,6 +243,8 @@ class GameAnalytics {
             blackCaptures: this.gameData.blackCaptures,
             redEfficiency: Math.round(redEfficiency),
             blackEfficiency: Math.round(blackEfficiency),
+            redPieces: redPieces,
+            blackPieces: blackPieces,
             longestJumpChain: this.gameData.longestJumpChain,
             keyMoments: this.gameData.keyMoments.length,
             winner: this.gameData.winner

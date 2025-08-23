@@ -311,7 +311,7 @@
             <button class="export-btn" onclick="openPlaybackViewer()" style="background: #ff6b6b;">🎮 Watch Full Replay</button>
             <button class="export-btn" onclick="exportGameData()">📥 Export Game</button>
             <button class="export-btn" onclick="shareGame()">📤 Share Replay</button>
-            <button class="export-btn" onclick="window.close()">✖ Close</button>
+            <button class="export-btn" onclick="closeAnalytics()">✖ Close</button>
         </div>
     </div>
     
@@ -580,9 +580,24 @@
             }
         }
         
+        function closeAnalytics() {
+            // Check if we're in an iframe
+            if (window.parent !== window) {
+                // Send message to parent to close modal
+                window.parent.postMessage({ type: 'close-analytics' }, '*');
+            } else {
+                // We're in a standalone window, close it
+                window.close();
+            }
+        }
+        
         function openPlaybackViewer() {
-            // Open the playback viewer (parent window will pass the data)
-            if (window.opener) {
+            // Check if we're in an iframe
+            if (window.parent !== window) {
+                // Send message to parent to open playback viewer
+                window.parent.postMessage({ type: 'start-replay' }, '*');
+            } else if (window.opener) {
+                // We're in a standalone window
                 window.opener.openPlaybackViewer();
             } else {
                 window.open('playback-viewer.html', 'playback', 'width=1600,height=900');

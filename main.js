@@ -200,6 +200,53 @@ function setupEventListeners() {
     document.getElementById('capture-screenshot').addEventListener('click', captureScreenshot);
     document.getElementById('copy-board-state').addEventListener('click', copyBoardState);
     
+    // Recording controls
+    document.getElementById('record-video').addEventListener('click', () => {
+        if (window.gameRecorder) {
+            const area = document.getElementById('recording-area').value;
+            window.gameRecorder.startRecording('video', area);
+            const areaText = area === 'full' ? 'full game' : 'board only';
+            showMoveIndicator(`📹 Recording ${areaText} video... (max 60s)`);
+            setTimeout(() => hideMoveIndicator(), 3000);
+            
+            // Auto-stop after 60 seconds
+            setTimeout(() => {
+                if (window.gameRecorder && window.gameRecorder.isRecording) {
+                    window.gameRecorder.stopRecording();
+                    showMoveIndicator('Recording stopped (60s limit)');
+                    setTimeout(() => hideMoveIndicator(), 3000);
+                }
+            }, 60000);
+        }
+    });
+    
+    document.getElementById('record-gif').addEventListener('click', () => {
+        if (window.gameRecorder) {
+            const area = document.getElementById('recording-area').value;
+            window.gameRecorder.startRecording('gif', area);
+            const areaText = area === 'full' ? 'full game' : 'board only';
+            showMoveIndicator(`🎬 Recording ${areaText} GIF... (max 30s)`);
+            setTimeout(() => hideMoveIndicator(), 3000);
+            
+            // Auto-stop after 30 seconds
+            setTimeout(() => {
+                if (window.gameRecorder && window.gameRecorder.isRecording) {
+                    window.gameRecorder.stopRecording();
+                    showMoveIndicator('GIF recording stopped (30s limit)');
+                    setTimeout(() => hideMoveIndicator(), 3000);
+                }
+            }, 30000);
+        }
+    });
+    
+    document.getElementById('stop-recording').addEventListener('click', () => {
+        if (window.gameRecorder && window.gameRecorder.isRecording) {
+            window.gameRecorder.stopRecording();
+            showMoveIndicator('Recording stopped');
+            setTimeout(() => hideMoveIndicator(), 2000);
+        }
+    });
+    
     // Timeline click handler for playback
     const timeline = document.getElementById('playback-timeline');
     if (timeline) {
@@ -805,11 +852,37 @@ function showGameOver() {
     
     addChatMessage('ai', `🎉 Congratulations! ${winner} has won the game! Click "📊 Analytics" to review the game.`);
     
+    // Check if the user (human player) won
+    const isUserWin = checkIfUserWon(game.winner);
+    
+    // Trigger confetti celebration if user wins
+    if (isUserWin && window.confettiCelebration) {
+        window.confettiCelebration.celebrate(5000); // 5 second celebration
+    }
+    
     // End analytics recording
     const stats = gameAnalytics.endGame(game.winner);
     
     // Auto-save the completed game
     autoSaveGame();
+}
+
+function checkIfUserWon(winner) {
+    // In PvC mode, check if the winner is not the AI
+    if (window.currentMode === 'pvc') {
+        // User plays as the selected color, AI plays opposite
+        const userColor = document.querySelector('input[name="player-color"]:checked')?.value || 'red';
+        return winner === userColor;
+    }
+    // In PvP mode, always celebrate (both are human players)
+    else if (window.currentMode === 'pvp') {
+        return true;
+    }
+    // In helper mode, celebrate when the game ends
+    else if (window.currentMode === 'helper') {
+        return true;
+    }
+    return false;
 }
 
 function autoSaveGame() {
@@ -838,19 +911,30 @@ function autoSaveGame() {
 }
 
 function showAnalytics() {
-    const analyticsWindow = window.open('analytics-view.html', 'analytics', 'width=1400,height=900');
+    // Calculate analytics data
+    const startTime = gameAnalytics.gameData.startTime || gameAnalytics.gameStartTime || Date.now();
+    const endTime = gameAnalytics.gameData.endTime || Date.now();
+    const duration = Math.max(0, Math.floor((endTime - startTime) / 1000)); // Ensure non-negative, convert to seconds
     
-    // Send analytics data to the new window
-    analyticsWindow.addEventListener('load', () => {
-        analyticsWindow.postMessage({
-            type: 'analytics-data',
-            data: {
-                stats: gameAnalytics.calculateGameStats(),
-                graphData: gameAnalytics.getGraphData(),
-                gameData: gameAnalytics.gameData
-            }
-        }, '*');
-    });
+    const analyticsData = {
+        stats: gameAnalytics.calculateGameStats(),
+        graphData: gameAnalytics.getGraphData(),
+        gameData: {...gameAnalytics.gameData, duration: duration}
+    };
+    
+    // Open analytics in modal overlay
+    if (window.analyticsModal) {
+        window.analyticsModal.open(analyticsData);
+    } else {
+        // Fallback to new window if modal not available
+        const analyticsWindow = window.open('analytics-view.html', 'analytics', 'width=1400,height=900');
+        analyticsWindow.addEventListener('load', () => {
+            analyticsWindow.postMessage({
+                type: 'analytics-data',
+                data: analyticsData
+            }, '*');
+        });
+    }
 }
 
 function openPlaybackViewer() {
@@ -877,6 +961,106 @@ window.addEventListener('message', (event) => {
 
 function showRules() {
     document.getElementById('rules-modal').style.display = 'block';
+}
+
+function showAnalyticsModal() {
+    // Create modal overlay
+    let modal = document.getElementById('analytics-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'analytics-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+        
+        const iframe = document.createElement('iframe');
+        iframe.src = 'analytics-modal.html';
+        iframe.style.cssText = `
+            width: 90%;
+            height: 90%;
+            max-width: 1400px;
+            max-height: 900px;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        `;
+        
+        modal.appendChild(iframe);
+        document.body.appendChild(modal);
+        
+        // Send data to iframe when loaded
+        iframe.onload = () => {
+            // Calculate proper duration
+            const startTime = gameAnalytics.gameData.startTime || gameAnalytics.gameStartTime;
+            const endTime = gameAnalytics.gameData.endTime || Date.now();
+            const duration = endTime && startTime ? endTime - startTime : 0;
+            
+            iframe.contentWindow.postMessage({
+                type: 'analytics-data',
+                data: {
+                    moves: gameAnalytics.gameData.moves,
+                    duration: duration,
+                    avgEfficiency: gameAnalytics.calculateAverageEfficiency(),
+                    totalCaptures: gameAnalytics.gameData.totalCaptures,
+                    kingsPromoted: gameAnalytics.gameData.kingsPromoted,
+                    longestChain: gameAnalytics.gameData.longestJumpChain,
+                    events: gameAnalytics.gameData.events
+                }
+            }, '*');
+        };
+        
+        // Close on click outside
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+        
+        // Listen for close message
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'close-analytics') {
+                modal.style.display = 'none';
+            } else if (e.data.type === 'start-replay') {
+                modal.style.display = 'none';
+                enterPlaybackMode();
+            }
+        });
+    } else {
+        modal.style.display = 'flex';
+        
+        // Resend data
+        const iframe = modal.querySelector('iframe');
+        if (iframe) {
+            // Calculate proper duration
+            const startTime = gameAnalytics.gameData.startTime || gameAnalytics.gameStartTime;
+            const endTime = gameAnalytics.gameData.endTime || Date.now();
+            const duration = endTime && startTime ? endTime - startTime : 0;
+            
+            iframe.contentWindow.postMessage({
+                type: 'analytics-data',
+                data: {
+                    moves: gameAnalytics.gameData.moves,
+                    duration: duration,
+                    avgEfficiency: gameAnalytics.calculateAverageEfficiency(),
+                    totalCaptures: gameAnalytics.gameData.totalCaptures,
+                    kingsPromoted: gameAnalytics.gameData.kingsPromoted,
+                    longestChain: gameAnalytics.gameData.longestJumpChain,
+                    events: gameAnalytics.gameData.events
+                }
+            }, '*');
+        }
+    }
+    
+    // No need for tips since it's always modal now
 }
 
 function updateRulesDisplay() {

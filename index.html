@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Checkers Pro - Advanced AI-Powered Game</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="analytics-modal-styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -180,6 +181,29 @@
                 </div>
                 
                 <div class="panel">
+                    <h3>Recording & Sharing</h3>
+                    <div class="recording-controls">
+                        <label style="display: block; margin-bottom: 10px;">
+                            <span>Recording Area:</span>
+                            <select id="recording-area" style="margin-left: 10px; padding: 5px;">
+                                <option value="full" selected>Full Game (with UI)</option>
+                                <option value="canvas">Board Only</option>
+                            </select>
+                        </label>
+                        <button id="record-video" class="control-btn record-btn">🎥 Record Video</button>
+                        <button id="record-gif" class="control-btn record-btn">🎬 Record GIF</button>
+                        <button id="stop-recording" class="control-btn stop-btn" style="display: none;">⏹️ Stop Recording</button>
+                        <div style="margin-top: 10px; font-size: 11px; color: #666;">
+                            <p>• <strong>Full Game:</strong> Captures everything including menus</p>
+                            <p>• <strong>Board Only:</strong> Just the 3D game board</p>
+                            <p>• Video: WebM format, up to 60s</p>
+                            <p>• GIF: 10 fps, up to 30s</p>
+                            <p>• Perfect for LinkedIn demos!</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel">
                     <h3>Debug Tools</h3>
                     <div class="debug-controls">
                         <button id="capture-screenshot" class="control-btn">📷 Capture Bug</button>
@@ -303,6 +327,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="game-logic.js"></script>
     <script src="ai-opponent.js"></script>
     <script src="3d-renderer.js"></script>
@@ -311,6 +336,10 @@
     <script src="game-analytics.js"></script>
     <script src="playback-controller.js"></script>
     <script src="bug-capture.js"></script>
+    <script src="game-recorder.js"></script>
+    <script src="confetti.js"></script>
+    <script src="analytics-renderer-full.js"></script>
+    <script src="analytics-modal-wrapper.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

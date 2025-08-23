@@ -44,7 +44,8 @@ class Checkers3DRenderer {
         this.renderer = new THREE.WebGLRenderer({ 
             canvas: this.canvas, 
             antialias: true,
-            alpha: true 
+            alpha: true,
+            preserveDrawingBuffer: true // Enable for recording/screenshots
         });
         this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
         this.renderer.shadowMap.enabled = true;

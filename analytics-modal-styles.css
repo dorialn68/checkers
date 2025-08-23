@@ -1,0 +1,28 @@
+/* Analytics Modal Styles - FULL OPACITY */
+#analytics-modal-wrapper {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.9) !important; /* Dark overlay for game */
+    z-index: 10000 !important;
+    display: none;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+#analytics-modal-wrapper > div {
+    background: #1a1a2e !important; /* SOLID background */
+    opacity: 1 !important;
+}
+
+.analytics-content {
+    background: #1a1a2e !important; /* SOLID background */
+    opacity: 1 !important;
+}
+
+/* Ensure all child elements are fully opaque */
+#analytics-modal-wrapper * {
+    opacity: 1 !important;
+}

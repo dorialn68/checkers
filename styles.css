@@ -705,3 +705,39 @@ input[type="color"]:hover {
     font-weight: 600;
     margin-right: 10px;
 }
+
+/* Recording Controls */
+.record-btn {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.record-btn:hover {
+    background: linear-gradient(135deg, #ff5252 0%, #ff7043 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+.stop-btn {
+    background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+    color: white;
+    font-weight: 600;
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
+
+.recording-controls {
+    padding: 10px;
+}
+
+.recording-controls p {
+    margin: 2px 0;
+    line-height: 1.4;
+}

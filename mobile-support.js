@@ -131,9 +131,11 @@ class MobileSupport {
                 }
 
                 .mode-btn {
-                    padding: 10px;
-                    font-size: 0.9em;
+                    padding: 15px;
+                    font-size: 1em;
                     width: 100%;
+                    min-height: 50px;
+                    touch-action: manipulation;
                 }
 
                 .control-buttons {
@@ -143,8 +145,10 @@ class MobileSupport {
                 }
 
                 .control-btn {
-                    padding: 10px;
-                    font-size: 0.9em;
+                    padding: 12px;
+                    font-size: 1em;
+                    min-height: 48px;
+                    touch-action: manipulation;
                 }
 
                 .difficulty-controls {
@@ -176,18 +180,21 @@ class MobileSupport {
                 }
 
                 .mobile-btn {
-                    padding: 12px 20px;
+                    padding: 15px 25px;
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     color: white;
                     border: none;
-                    border-radius: 10px;
-                    font-size: 0.9em;
+                    border-radius: 12px;
+                    font-size: 1em;
                     font-weight: 600;
                     touch-action: manipulation;
+                    min-width: 80px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
                 }
 
                 .mobile-btn:active {
                     transform: scale(0.95);
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
                 }
 
                 /* Hide desktop-only elements */

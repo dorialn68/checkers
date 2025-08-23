@@ -148,39 +148,7 @@ class Checkers3DRenderer {
                 square.userData = { row, col, isSquare: true };
                 boardGroup.add(square);
 
-                // Only add edge labels, not on every square
-                if (row === 7 || col === 0) {
-                    const labelCanvas = document.createElement('canvas');
-                    labelCanvas.width = 64;
-                    labelCanvas.height = 64;
-                    const ctx = labelCanvas.getContext('2d');
-                    ctx.fillStyle = isBlack ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
-                    ctx.font = 'bold 14px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    
-                    // Show column letters on bottom row
-                    if (row === 7) {
-                        ctx.fillText(String.fromCharCode(65 + col), 32, 50);
-                    }
-                    // Show row numbers on left column
-                    if (col === 0) {
-                        ctx.fillText(8 - row, 12, 32);
-                    }
-                    
-                    const labelTexture = new THREE.CanvasTexture(labelCanvas);
-                    const labelMaterial = new THREE.MeshBasicMaterial({
-                        map: labelTexture,
-                        transparent: true,
-                        opacity: 0.3
-                    });
-                    const labelMesh = new THREE.Mesh(squareGeometry, labelMaterial);
-                    labelMesh.rotation.x = -Math.PI / 2;
-                    labelMesh.position.set(col - 3.5, 0.02, row - 3.5);
-                    // Make label mesh non-interactive
-                    labelMesh.userData = { isLabel: true };
-                    boardGroup.add(labelMesh);
-                }
+                // No coordinate labels - clean board for better mobile experience
             }
         }
 
@@ -191,8 +159,9 @@ class Checkers3DRenderer {
     createPieces() {
         this.clearPieces();
 
-        const pieceGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 32);
-        const kingGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 32);
+        // Slightly larger pieces for better mobile interaction
+        const pieceGeometry = new THREE.CylinderGeometry(0.38, 0.38, 0.15, 32);
+        const kingGeometry = new THREE.CylinderGeometry(0.38, 0.38, 0.25, 32);
         
         // Get piece colors
         let redColor, blackColor;
@@ -512,10 +481,6 @@ class Checkers3DRenderer {
         // First check if we clicked on a piece directly
         for (const intersect of intersects) {
             const object = intersect.object;
-            // Skip label meshes
-            if (object.userData && object.userData.isLabel) {
-                continue;
-            }
             // Check if it's a piece
             if (object.userData && object.userData.piece) {
                 const { row, col } = object.userData;
@@ -529,10 +494,6 @@ class Checkers3DRenderer {
         // If no piece was clicked, check for squares
         for (const intersect of intersects) {
             const object = intersect.object;
-            // Skip label meshes
-            if (object.userData && object.userData.isLabel) {
-                continue;
-            }
             // Check for clickable squares
             if (object.userData && object.userData.isSquare) {
                 const { row, col } = object.userData;
@@ -567,10 +528,6 @@ class Checkers3DRenderer {
         
         for (const intersect of intersects) {
             const object = intersect.object;
-            // Skip label meshes
-            if (object.userData && object.userData.isLabel) {
-                continue;
-            }
             if (object.userData && (object.userData.isSquare || object.userData.piece)) {
                 this.canvas.style.cursor = 'pointer';
                 break;
